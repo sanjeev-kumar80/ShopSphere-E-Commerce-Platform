@@ -2,10 +2,78 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Brand = require("../models/Brand");
+const slugify = require("../utils/slug");
 
 const createProduct = async (req, res) => {
     try {
         const {
+            name,
+            description,
+            shortDescription,
+            category,
+            brand,
+            images,
+            variants,
+            tags,
+            rating,
+            reviewCount,
+            isFeatured,
+            isActive,
+            seo
+        } = req.body;
+
+        const categoryExists = await Category.findOne({
+            _id: category,
+            isActive: true
+        });
+
+        if (!categoryExists) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or inactive category"
+            });
+        }
+
+        if (brand) {
+            const brandExists = await Brand.findOne({
+                _id: brand,
+                isActive: true
+            });
+
+            if (!brandExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid or inactive brand"
+                });
+            }
+        }
+
+        // Check duplicate SKUs inside the same product
+        const skuList = variants.map((variant) =>
+            variant.sku.trim().toUpperCase()
+        );
+
+        const uniqueSkus = new Set(skuList);
+
+        if (uniqueSkus.size !== skuList.length) {
+            return res.status(400).json({
+                success: false,
+                message: "Duplicate SKU found in product variants"
+            });
+        }
+
+        // Generate slug automatically
+        const baseSlug = slugify(name);
+
+        let slug = baseSlug;
+        let counter = 1;
+
+        while (await Product.exists({ slug })) {
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+        }
+
+        const product = await Product.create({
             name,
             slug,
             description,
@@ -15,100 +83,30 @@ const createProduct = async (req, res) => {
             images,
             variants,
             tags,
+            rating,
+            reviewCount,
             isFeatured,
-            seo
-        } = req.body;
-
-        if (!name || !slug || !description || !category || !variants) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Name, slug, description, category and variants are required"
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(category)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid category ID"
-            });
-        }
-
-        const categoryExists = await Category.findOne({
-            _id: category,
-            isActive: true
-        });
-
-        if (!categoryExists) {
-            return res.status(404).json({
-                success: false,
-                message: "Category not found"
-            });
-        }
-
-        if (brand) {
-            if (!mongoose.Types.ObjectId.isValid(brand)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid brand ID"
-                });
-            }
-
-            const brandExists = await Brand.findOne({
-                _id: brand,
-                isActive: true
-            });
-
-            if (!brandExists) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Brand not found"
-                });
-            }
-        }
-
-        const existingProduct = await Product.findOne({
-            $or: [{ slug }, { name }]
-        });
-
-        if (existingProduct) {
-            return res.status(409).json({
-                success: false,
-                message: "Product with same name or slug already exists"
-            });
-        }
-
-        const product = await Product.create({
-            name,
-            slug,
-            description,
-            shortDescription,
-            category,
-            brand: brand || null,
-            images: images || [],
-            variants,
-            tags: tags || [],
-            isFeatured: isFeatured || false,
+            isActive,
             seo
         });
 
         const populatedProduct = await Product.findById(product._id)
             .populate("category", "name slug")
-            .populate("brand", "name slug logo");
+            .populate("brand", "name slug");
 
         return res.status(201).json({
             success: true,
             message: "Product created successfully",
-            data: {
-                product: populatedProduct
-            }
+            data: populatedProduct
         });
+
     } catch (error) {
         console.error("Create product error:", error);
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: "Failed to create product",
+            error: error.message
         });
     }
 };
@@ -356,9 +354,51 @@ const updateProduct = async (req, res) => {
             });
         }
 
+        const allowedFields = [
+            "name",
+            "description",
+            "shortDescription",
+            "category",
+            "brand",
+            "images",
+            "variants",
+            "tags",
+            "isFeatured",
+            "isActive",
+            "seo"
+        ];
+
+        const updateData = {};
+
+        allowedFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        });
+
+        // Auto-generate slug if name changes
+        if (updateData.name) {
+            const baseSlug = slugify(updateData.name);
+
+            let slug = baseSlug;
+            let counter = 1;
+
+            while (
+                await Product.exists({
+                    slug,
+                    _id: { $ne: id }
+                })
+            ) {
+                slug = `${baseSlug}-${counter}`;
+                counter++;
+            }
+
+            updateData.slug = slug;
+        }
+
         const product = await Product.findByIdAndUpdate(
             id,
-            req.body,
+            updateData,
             {
                 new: true,
                 runValidators: true
@@ -381,6 +421,7 @@ const updateProduct = async (req, res) => {
                 product
             }
         });
+
     } catch (error) {
         console.error("Update product error:", error);
 
@@ -390,7 +431,6 @@ const updateProduct = async (req, res) => {
         });
     }
 };
-
 const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
