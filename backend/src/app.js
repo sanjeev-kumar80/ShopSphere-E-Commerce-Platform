@@ -4,6 +4,8 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
+const authRoutes = require("./routes/authRoutes");
+
 const app = express();
 
 // Security middleware
@@ -26,6 +28,8 @@ app.use(cookieParser());
 
 // Logging
 app.use(morgan("dev"));
+
+app.use("/api/auth", authRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
