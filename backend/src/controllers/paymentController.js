@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 const mongoose = require("mongoose");
 
 const Cart = require("../models/Cart");
@@ -72,6 +74,80 @@ const createPaymentOrder = async (req, res) => {
 };
 
 
+const verifyPayment = async (req, res) => {
+    try {
+        const {
+            orderId,
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
+        } = req.body;
+
+        if (
+            !orderId ||
+            !razorpayOrderId ||
+            !razorpayPaymentId ||
+            !razorpaySignature
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Payment details are required"
+            });
+        }
+
+        const order = await Order.findOne({
+            _id: orderId,
+            user: req.user._id
+        });
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found"
+            });
+        }
+
+        const generatedSignature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+            .digest("hex");
+
+        if (generatedSignature !== razorpaySignature) {
+            order.paymentStatus = "FAILED";
+            await order.save();
+
+            return res.status(400).json({
+                success: false,
+                message: "Payment verification failed"
+            });
+        }
+
+        order.paymentStatus = "PAID";
+        order.orderStatus = "CONFIRMED";
+
+        await order.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Payment verified successfully",
+            data: {
+                orderId: order._id,
+                paymentStatus: order.paymentStatus,
+                orderStatus: order.orderStatus
+            }
+        });
+
+    } catch (error) {
+        console.error("Payment verification error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to verify payment"
+        });
+    }
+};
+
 module.exports = {
-    createPaymentOrder
+    createPaymentOrder,
+    verifyPayment
 };
