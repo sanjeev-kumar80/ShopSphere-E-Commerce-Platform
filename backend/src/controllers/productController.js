@@ -4,6 +4,8 @@ const Category = require("../models/Category");
 const Brand = require("../models/Brand");
 const slugify = require("../utils/slug");
 
+const {uploadImage,deleteImage} = require("../services/cloudinaryService");
+
 const createProduct = async (req, res) => {
     try {
         const {
@@ -121,81 +123,225 @@ const getProducts = async (req, res) => {
             maxPrice,
             minRating,
             featured,
+            tags,
+            inStock,
             sort = "newest",
             page = 1,
-            limit = 12
+            limit = 20
         } = req.query;
-
-        const currentPage = Math.max(Number(page), 1);
-        const productsPerPage = Math.min(
-            Math.max(Number(limit), 1),
-            50
-        );
 
         const filter = {
             isActive: true
         };
 
+        // -------------------------
         // Search
-        if (search) {
+        // -------------------------
+
+        if (search && search.trim()) {
             filter.$text = {
-                $search: search
+                $search: search.trim()
             };
         }
 
-        // Category
+        // -------------------------
+        // Category filter
+        // -------------------------
+
         if (category) {
-            if (!mongoose.Types.ObjectId.isValid(category)) {
+            const categories = category.split(",");
+
+            const validCategories = categories.filter((id) =>
+                mongoose.Types.ObjectId.isValid(id)
+            );
+
+            if (validCategories.length === 0) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid category ID"
                 });
             }
 
-            filter.category = category;
+            filter.category = {
+                $in: validCategories
+            };
         }
 
-        // Brand
+        // -------------------------
+        // Brand filter
+        // -------------------------
+
         if (brand) {
-            if (!mongoose.Types.ObjectId.isValid(brand)) {
+            const brands = brand.split(",");
+
+            const validBrands = brands.filter((id) =>
+                mongoose.Types.ObjectId.isValid(id)
+            );
+
+            if (validBrands.length === 0) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid brand ID"
                 });
             }
 
-            filter.brand = brand;
-        }
-
-        // Price
-        if (minPrice || maxPrice) {
-            filter["variants.price"] = {};
-
-            if (minPrice) {
-                filter["variants.price"].$gte = Number(minPrice);
-            }
-
-            if (maxPrice) {
-                filter["variants.price"].$lte = Number(maxPrice);
-            }
-        }
-
-        // Rating
-        if (minRating) {
-            filter.rating = {
-                $gte: Number(minRating)
+            filter.brand = {
+                $in: validBrands
             };
         }
 
-        // Featured
-        if (featured === "true") {
-            filter.isFeatured = true;
+        // -------------------------
+        // Price filter
+        // -------------------------
+
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            filter["variants.price"] = {};
+
+            if (minPrice !== undefined) {
+                const min = Number(minPrice);
+
+                if (Number.isNaN(min) || min < 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid minimum price"
+                    });
+                }
+
+                filter["variants.price"].$gte = min;
+            }
+
+            if (maxPrice !== undefined) {
+                const max = Number(maxPrice);
+
+                if (Number.isNaN(max) || max < 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid maximum price"
+                    });
+                }
+
+                filter["variants.price"].$lte = max;
+            }
+
+            if (
+                minPrice !== undefined &&
+                maxPrice !== undefined &&
+                Number(minPrice) > Number(maxPrice)
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Minimum price cannot be greater than maximum price"
+                });
+            }
         }
 
+        // -------------------------
+        // Rating filter
+        // -------------------------
+
+        if (minRating !== undefined) {
+            const rating = Number(minRating);
+
+            if (
+                Number.isNaN(rating) ||
+                rating < 0 ||
+                rating > 5
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Rating must be between 0 and 5"
+                });
+            }
+
+            filter.rating = {
+                $gte: rating
+            };
+        }
+
+        // -------------------------
+        // Featured filter
+        // -------------------------
+
+        if (featured !== undefined) {
+            if (featured !== "true" && featured !== "false") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Featured must be true or false"
+                });
+            }
+
+            filter.isFeatured = featured === "true";
+        }
+
+        // -------------------------
+        // Tags filter
+        // -------------------------
+
+        if (tags) {
+            const tagList = tags
+                .split(",")
+                .map((tag) => tag.trim().toLowerCase())
+                .filter(Boolean);
+
+            if (tagList.length > 0) {
+                filter.tags = {
+                    $in: tagList
+                };
+            }
+        }
+
+        // -------------------------
+        // Stock filter
+        // -------------------------
+
+        if (inStock !== undefined) {
+            if (inStock !== "true" && inStock !== "false") {
+                return res.status(400).json({
+                    success: false,
+                    message: "inStock must be true or false"
+                });
+            }
+
+            if (inStock === "true") {
+                filter.variants = {
+                    $elemMatch: {
+                        stock: {
+                            $gt: 0
+                        },
+                        isActive: true
+                    }
+                };
+            }
+        }
+
+        // -------------------------
+        // Pagination
+        // -------------------------
+
+        const currentPage = Math.max(Number(page) || 1, 1);
+
+        const productsPerPage = Math.min(
+            Math.max(Number(limit) || 20, 1),
+            50
+        );
+
+        const skip = (currentPage - 1) * productsPerPage;
+
+        // -------------------------
         // Sorting
-        let sortOption = {};
+        // -------------------------
+
+        let sortOption = {
+            createdAt: -1
+        };
 
         switch (sort) {
+            case "oldest":
+                sortOption = {
+                    createdAt: 1
+                };
+                break;
+
             case "price-low":
                 sortOption = {
                     "variants.price": 1
@@ -210,29 +356,39 @@ const getProducts = async (req, res) => {
 
             case "rating":
                 sortOption = {
+                    rating: -1,
+                    reviewCount: -1
+                };
+                break;
+
+            case "popular":
+                sortOption = {
+                    reviewCount: -1,
                     rating: -1
                 };
                 break;
 
-            case "oldest":
-                sortOption = {
-                    createdAt: 1
-                };
-                break;
-
             case "newest":
-            default:
                 sortOption = {
                     createdAt: -1
                 };
+                break;
+
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid sort option"
+                });
         }
 
-        const skip = (currentPage - 1) * productsPerPage;
+        // -------------------------
+        // Database queries
+        // -------------------------
 
         const [products, totalProducts] = await Promise.all([
             Product.find(filter)
                 .populate("category", "name slug")
-                .populate("brand", "name slug logo")
+                .populate("brand", "name slug")
                 .sort(sortOption)
                 .skip(skip)
                 .limit(productsPerPage),
@@ -258,12 +414,13 @@ const getProducts = async (req, res) => {
                 }
             }
         });
+
     } catch (error) {
         console.error("Get products error:", error);
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: "Failed to fetch products"
         });
     }
 };

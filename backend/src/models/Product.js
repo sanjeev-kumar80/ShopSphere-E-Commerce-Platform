@@ -35,9 +35,26 @@ const variantSchema = new mongoose.Schema(
         },
 
         images: {
-            type: [String],
-            default: []
-        },
+    type: [
+        {
+            url: {
+                type: String,
+                required: true
+            },
+
+            publicId: {
+                type: String,
+                required: true
+            },
+
+            alt: {
+                type: String,
+                default: ""
+            }
+        }
+    ],
+    default: []
+},
 
         isActive: {
             type: Boolean,
@@ -94,9 +111,26 @@ const productSchema = new mongoose.Schema(
         },
 
         images: {
-            type: [String],
-            default: []
-        },
+    type: [
+        {
+            url: {
+                type: String,
+                required: true
+            },
+
+            publicId: {
+                type: String,
+                required: true
+            },
+
+            alt: {
+                type: String,
+                default: ""
+            }
+        }
+    ],
+    default: []
+},
 
         variants: {
             type: [variantSchema],
