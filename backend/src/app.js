@@ -12,6 +12,7 @@ const productRoutes = require("./routes/productRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const cartRoutes = require("./routes/cartRoutes");
+const addressRoutes = require("./routes/addressRoutes");
 
 
 const app = express();
@@ -45,6 +46,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/users/addresses", addressRoutes);
 
 
 // Health check
