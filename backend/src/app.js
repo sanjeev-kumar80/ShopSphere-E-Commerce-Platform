@@ -6,6 +6,10 @@ const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const brandRoutes = require("./routes/brandRoutes");
+const productRoutes = require("./routes/productRoutes");
+
 
 const app = express();
 
@@ -32,6 +36,9 @@ app.use(morgan("dev"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/brands", brandRoutes);
+app.use("/api/products", productRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
