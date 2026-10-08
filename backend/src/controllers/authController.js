@@ -183,12 +183,12 @@ const login = async (req, res) => {
             });
         }
 
-        if (!user.isEmailVerified) {
-          return res.status(403).json({
-              success: false,
-              message: "Please verify your email before logging in"
-          });
-}
+        // if (!user.isEmailVerified) {
+        //   return res.status(403).json({
+        //       success: false,
+        //       message: "Please verify your email before logging in"
+        //   });
+// }
 
         // Generate tokens
         const accessToken = generateAccessToken(user);
