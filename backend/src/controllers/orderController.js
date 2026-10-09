@@ -293,9 +293,135 @@ const cancelOrder = async (req, res) => {
 };
 
 
+
+
+ // Admin: Get All Orders
+const getAllOrders = async (req, res) => {
+    try {
+        const orders = await Order.find()
+            .populate("user", "name email")
+            .populate("items.product", "name slug images")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            count: orders.length,
+            data: orders
+        });
+    } catch (error) {
+        console.error("Get all orders error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get orders"
+        });
+    }
+};
+
+
+// Admin: Update Order Status
+const updateOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { orderStatus } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order ID"
+            });
+        }
+
+        const allowedStatuses = [
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED",
+            "DELIVERED",
+            "CANCELLED"
+        ];
+
+        if (!allowedStatuses.includes(orderStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order status"
+            });
+        }
+
+        const order = await Order.findById(id);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found"
+            });
+        }
+
+        if (
+            order.orderStatus === "CANCELLED" ||
+            order.orderStatus === "DELIVERED"
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "This order can no longer be updated"
+            });
+        }
+
+        if (
+            order.orderStatus === "SHIPPED" &&
+            ["CONFIRMED", "PROCESSING"].includes(orderStatus)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "A shipped order cannot move to an earlier status"
+            });
+        }
+
+        // Restore stock when the admin cancels an order
+        if (orderStatus === "CANCELLED") {
+            if (order.orderStatus === "SHIPPED") {
+                return res.status(400).json({
+                    success: false,
+                    message: "A shipped order cannot be cancelled here"
+                });
+            }
+
+            for (const item of order.items) {
+                const product = await Product.findById(item.product);
+
+                if (product) {
+                    const variant = product.variants.id(item.variantId);
+
+                    if (variant) {
+                        variant.stock += item.quantity;
+                        await product.save();
+                    }
+                }
+            }
+        }
+
+        order.orderStatus = orderStatus;
+        await order.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Order status updated successfully",
+            data: order
+        });
+    } catch (error) {
+        console.error("Update order status error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update order status"
+        });
+    }
+};  
+
 module.exports = {
     createOrder,
     getMyOrders,
     getOrderById,
-    cancelOrder
+    cancelOrder,
+    getAllOrders,
+    updateOrderStatus
 };

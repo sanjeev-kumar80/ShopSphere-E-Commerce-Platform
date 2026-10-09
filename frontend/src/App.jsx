@@ -5,6 +5,9 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLayout from "./layouts/AdminLayout";
 import CategoryManagement from "./pages/admin/CategoryManagement";
+import ProductManagement from "./pages/admin/ProductManagement";
+import BrandManagement from "./pages/admin/BrandManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
 
 function App() {
   return (
@@ -22,6 +25,9 @@ function App() {
             />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="categories" element={<CategoryManagement />} />
+            <Route path="products" element={<ProductManagement />} />
+            <Route path="brands" element={<BrandManagement />} />
+            <Route path="orders" element={<OrderManagement />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

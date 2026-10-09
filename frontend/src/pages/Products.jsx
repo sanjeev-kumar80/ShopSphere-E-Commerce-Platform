@@ -11,7 +11,15 @@ function Products() {
       try {
         const response = await api.get("/products");
 
-        setProducts(response.data.data.products || []);
+        console.log("PRODUCT RESPONSE:", response.data);
+
+        const result = response.data.data;
+
+        setProducts(
+          Array.isArray(result)
+            ? result
+            : result?.products || []
+        );
       } catch (error) {
         console.error(error);
         setError("Failed to load products");
