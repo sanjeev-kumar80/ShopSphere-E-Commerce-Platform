@@ -66,7 +66,19 @@ useEffect(() => {
     setUser(userData);
   };
 
-  const logout = async () => {
+  // const logout = async () => {
+  //   try {
+  //     await api.post("/auth/logout");
+  //   } catch (error) {
+  //     console.error("Logout request failed:", error.message);
+  //   } finally {
+  //     sessionStorage.removeItem("accessToken");
+  //     setToken(null);
+  //     setUser(null);
+  //   }
+  // };
+
+    const logout = async () => {
     try {
       await api.post("/auth/logout");
     } catch (error) {

@@ -1,6 +1,7 @@
 
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLayout from "./layouts/AdminLayout";
@@ -9,6 +10,7 @@ import ProductManagement from "./pages/admin/ProductManagement";
 import BrandManagement from "./pages/admin/BrandManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 
+import Home from "./pages/Home";
 import Products from "./pages/Products";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
@@ -16,19 +18,36 @@ import OrderSuccess from "./pages/customer/OrderSuccess";
 import MyOrders from "./pages/customer/MyOrders";
 import OrderDetails from "./pages/customer/OrderDetails";
 
+
+import CustomerLogin from "./pages/customer/CustomerLogin";
+import CustomerRegister from "./pages/customer/CustomerRegister";
+
+
+import CustomerProtectedRoute from "./components/CustomerProtectedRoute";
+
+
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* <Route path="/" element={<Navigate to="/admin/login" replace />} /> */}
-          <Route path="/" element={<Products />} />
+          <Route path="/" element={<Home />} />
           <Route path="/shop" element={<Products />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-success" element={<OrderSuccess />} />
-          <Route path="/orders" element={<MyOrders />} />
-          <Route path="/orders/:id" element={<OrderDetails />} />
+
+          
+          <Route element={<CustomerProtectedRoute />}>
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-success" element={<OrderSuccess />} />
+            <Route path="/orders" element={<MyOrders />} />
+            <Route path="/orders/:id" element={<OrderDetails />} />
+          </Route>
+
+          
+          <Route path="/login" element={<CustomerLogin />} />
+          <Route path="/register" element={<CustomerRegister />} />
+
 
           <Route path="/admin/login" element={<AdminLogin />} />
 
@@ -44,7 +63,10 @@ function App() {
             <Route path="orders" element={<OrderManagement />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
