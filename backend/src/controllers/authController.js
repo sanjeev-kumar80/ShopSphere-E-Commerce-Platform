@@ -255,7 +255,7 @@ const refreshAccessToken = async (req, res) => {
         // Verify JWT
         const decoded = jwt.verify(
             refreshToken,
-            process.env.JWT_REFRESH_SECRET
+            process.env.JWT_REFRESH_SECRET || "default_jwt_refresh_secret_fallback"
         );
 
         // Find user and include refresh token

@@ -6,7 +6,7 @@ const generateAccessToken = (user) => {
             userId: user._id,
             role: user.role
         },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || "default_jwt_secret_fallback",
         {
             expiresIn: "15m"
         }
@@ -18,7 +18,7 @@ const generateRefreshToken = (user) => {
         {
             userId: user._id
         },
-        process.env.JWT_REFRESH_SECRET,
+        process.env.JWT_REFRESH_SECRET || "default_jwt_refresh_secret_fallback",
         {
             expiresIn: "7d"
         }
