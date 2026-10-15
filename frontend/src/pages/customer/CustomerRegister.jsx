@@ -47,7 +47,7 @@ function CustomerRegister() {
       });
 
       setSuccess(
-        `We've sent a verification link to ${form.email.trim()}. Please check your email to activate your account before logging in.`
+        "Account create ho gaya! Verification email check karo. Ab login kar sakte ho."
       );
     } catch (err) {
       setError(
@@ -60,7 +60,7 @@ function CustomerRegister() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-gray-100">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <Link to="/" className="mb-8 block text-center text-3xl font-bold">
           Shop<span className="text-indigo-600">Sphere</span>
         </Link>
@@ -79,28 +79,15 @@ function CustomerRegister() {
         )}
 
         {success && (
-          <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-2xl">
-              ✉️
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
-              Check your inbox!
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-gray-600">
-              {success}
-            </p>
-            <p className="mt-3 text-[11px] text-gray-400">
-              Didn't receive the email? Check your spam or promotions folder.
-            </p>
-            <div className="mt-6 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => navigate("/login", { replace: true })}
-                className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition"
-              >
-                Proceed to Login
-              </button>
-            </div>
+          <div className="mt-5 rounded-lg bg-green-50 p-4 text-sm text-green-800">
+            <p>{success}</p>
+            <button
+              type="button"
+              onClick={() => navigate("/login", { replace: true })}
+              className="mt-3 font-semibold underline"
+            >
+              Go to Login
+            </button>
           </div>
         )}
 

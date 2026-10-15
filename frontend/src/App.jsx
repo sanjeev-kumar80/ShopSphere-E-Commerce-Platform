@@ -16,8 +16,11 @@ import Checkout from "./pages/customer/Checkout";
 import OrderSuccess from "./pages/customer/OrderSuccess";
 import MyOrders from "./pages/customer/MyOrders";
 import OrderDetails from "./pages/customer/OrderDetails";
+import Profile from "./pages/customer/Profile";
 import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerRegister from "./pages/customer/CustomerRegister";
+import ForgotPassword from "./pages/customer/ForgotPassword";
+import ResetPassword from "./pages/customer/ResetPassword";
 import VerifyEmail from "./pages/customer/VerifyEmail";
 import CustomerProtectedRoute from "./components/CustomerProtectedRoute";
 
@@ -77,6 +80,7 @@ function App() {
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/orders" element={<MyOrders />} />
                 <Route path="/orders/:id" element={<OrderDetails />} />
+                <Route path="/profile" element={<Profile />} />
               </Route>
 
               {/* 404 Page inside customer layout */}
@@ -86,6 +90,9 @@ function App() {
             {/* Customer Auth Pages */}
             <Route path="/login" element={<CustomerLogin />} />
             <Route path="/register" element={<CustomerRegister />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 

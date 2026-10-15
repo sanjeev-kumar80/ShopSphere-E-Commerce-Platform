@@ -211,4 +211,42 @@ productSchema.index({
     createdAt: -1
 });
 
+// Recalculate average rating and review count from reviews
+productSchema.statics.recalculateRatings = async function (productId) {
+    if (!productId) return null;
+    try {
+        const Review = mongoose.model("Review");
+        const stats = await Review.aggregate([
+            {
+                $match: {
+                    product: new mongoose.Types.ObjectId(productId)
+                }
+            },
+            {
+                $group: {
+                    _id: "$product",
+                    avgRating: { $avg: "$rating" },
+                    numReviews: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const update =
+            stats.length > 0
+                ? {
+                      rating: Math.round(stats[0].avgRating * 10) / 10,
+                      reviewCount: stats[0].numReviews
+                  }
+                : {
+                      rating: 0,
+                      reviewCount: 0
+                  };
+
+        return await this.findByIdAndUpdate(productId, update, { returnDocument: "after" });
+    } catch (error) {
+        console.error("Error updating product ratings:", productId, error);
+        return null;
+    }
+};
+
 module.exports = mongoose.model("Product", productSchema);

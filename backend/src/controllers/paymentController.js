@@ -3,8 +3,7 @@ const crypto = require("crypto");
 const mongoose = require("mongoose");
 
 const Order = require("../models/Order");
-const getRazorpay = require("../config/razorpay");
-const { sendOrderConfirmationEmail } = require("../services/emailService");
+const razorpay = require("../config/razorpay");
 
 // Create or reuse a Razorpay order for payment retry
 const createPaymentOrder = async (req, res) => {
@@ -64,7 +63,7 @@ const createPaymentOrder = async (req, res) => {
 
     if (order.razorpayOrderId) {
       // Reuse the same Razorpay order when retrying payment.
-      razorpayOrder = await getRazorpay().orders.fetch(
+      razorpayOrder = await razorpay.orders.fetch(
         order.razorpayOrderId
       );
 
@@ -79,7 +78,7 @@ const createPaymentOrder = async (req, res) => {
         });
       }
     } else {
-      razorpayOrder = await getRazorpay().orders.create({
+      razorpayOrder = await razorpay.orders.create({
         amount: expectedAmount,
         currency: "INR",
         receipt: order._id.toString(),
@@ -210,7 +209,7 @@ const verifyPayment = async (req, res) => {
     }
 
     // Confirm the payment really belongs to this Razorpay order.
-    const payment = await getRazorpay().payments.fetch(
+    const payment = await razorpay.payments.fetch(
       razorpayPaymentId
     );
 
@@ -240,15 +239,6 @@ const verifyPayment = async (req, res) => {
     order.orderStatus = "CONFIRMED";
 
     await order.save();
-
-    // Send order confirmation email for paid order
-    sendOrderConfirmationEmail({
-      to: req.user.email,
-      name: req.user.name || order.shippingAddress?.fullName || "Valued Customer",
-      order,
-    }).catch((err) =>
-      console.error("Paid order confirmation email failed:", err.message)
-    );
 
     return res.status(200).json({
       success: true,

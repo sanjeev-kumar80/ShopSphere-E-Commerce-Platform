@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useStore } from "../context/StoreContext";
 import ProductCard from "../components/ProductCard";
+import ProductReviews from "../components/ProductReviews";
 import {
   HeartIcon,
   StarIcon,
@@ -17,7 +18,7 @@ import {
 export default function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart, isInWishlist, toggleWishlist, showToast } = useStore();
+  const { addToCart, isInWishlist, toggleWishlist } = useStore();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,6 @@ export default function ProductDetails() {
 
   // Related products state
   const [relatedProducts, setRelatedProducts] = useState([]);
-  const [relatedLoading, setRelatedLoading] = useState(false);
 
   // Fetch product data
   useEffect(() => {
@@ -83,7 +83,6 @@ export default function ProductDetails() {
     let cancelled = false;
 
     const fetchRelated = async () => {
-      setRelatedLoading(true);
       try {
         const res = await api.get("/products", {
           params: {
@@ -98,8 +97,6 @@ export default function ProductDetails() {
         }
       } catch (err) {
         console.warn("Failed to load related products:", err.message);
-      } finally {
-        if (!cancelled) setRelatedLoading(false);
       }
     };
 
@@ -368,25 +365,41 @@ export default function ProductDetails() {
 
             {/* Star Rating & Reviews */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center text-amber-500">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("reviews");
+                  const el = document.getElementById("customer-reviews-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="flex items-center text-amber-500 hover:opacity-80 transition cursor-pointer"
+              >
                 {[1, 2, 3, 4, 5].map((star) => (
                   <StarIcon
                     key={star}
                     className="w-4 h-4"
-                    filled={star <= Math.round(product.rating || 5)}
+                    filled={star <= Math.round(product.rating || 0)}
                   />
                 ))}
                 <span className="ml-2 font-bold text-slate-800 text-sm">
-                  {product.rating > 0 ? product.rating.toFixed(1) : "4.8"}
+                  {product.rating > 0 ? product.rating.toFixed(1) : "0.0"}
                 </span>
-              </div>
+              </button>
               <span className="text-slate-300">•</span>
-              <span className="text-xs font-medium text-indigo-600 hover:underline cursor-pointer">
-                {product.reviewCount || 42} Customer Reviews
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("reviews");
+                  const el = document.getElementById("customer-reviews-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
+              >
+                {product.reviewCount || 0} Customer Review{product.reviewCount === 1 ? "" : "s"}
+              </button>
               <span className="text-slate-300">•</span>
               <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                <CheckIcon className="w-3.5 h-3.5" /> Verified Purchase
+                <CheckIcon className="w-3.5 h-3.5" /> Authentic Reviews
               </span>
             </div>
 
@@ -611,6 +624,20 @@ export default function ProductDetails() {
             >
               Shipping & Returns
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("reviews")}
+              className={`pb-3 transition border-b-2 flex items-center gap-1.5 ${
+                activeTab === "reviews"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span>Customer Reviews</span>
+              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600">
+                {product.reviewCount || 0}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -681,6 +708,25 @@ export default function ProductDetails() {
                 Products can be replaced or returned within 7 days of delivery in original condition with intact packaging. Contact customer support or navigate to your Orders page to initiate a replacement.
               </p>
             </div>
+          )}
+
+          {activeTab === "reviews" && (
+            <ProductReviews
+              productId={product._id}
+              productRating={product.rating || 0}
+              productReviewCount={product.reviewCount || 0}
+              onReviewChange={(updatedStats) => {
+                setProduct((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        rating: updatedStats.rating,
+                        reviewCount: updatedStats.reviewCount,
+                      }
+                    : prev
+                );
+              }}
+            />
           )}
         </div>
       </section>

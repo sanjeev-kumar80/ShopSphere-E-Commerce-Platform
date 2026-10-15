@@ -85,6 +85,14 @@ export default function CustomerNavbar() {
                   </div>
 
                   <Link
+                    to="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-sm hover:bg-gray-50"
+                  >
+                    Profile & Addresses
+                  </Link>
+
+                  <Link
                     to="/orders"
                     onClick={() => setMenuOpen(false)}
                     className="block px-4 py-2 text-sm hover:bg-gray-50"
