@@ -11,11 +11,7 @@ const {
     hashToken
 } = require("../utils/randomToken");
 
-const {
-    sendEmail,
-    sendVerificationEmail,
-    sendLoginAlertEmail
-} = require("../services/emailService");
+const { sendEmail } = require("../services/emailService");
 
 
 
@@ -69,18 +65,53 @@ const register = async (req, res) => {
         });
 
         const verificationUrl =
-            `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email/${verificationToken}`;
+        `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-        await sendVerificationEmail({
+        await sendEmail({
             to: user.email,
-            name: user.name,
-            verificationUrl
+            subject: "Verify your ShopSphere account",
+            html: `
+                <h2>Welcome to ShopSphere</h2>
+
+                <p>Hello ${user.name},</p>
+
+                <p>
+                    Please verify your email address by clicking the button below.
+                </p>
+
+                <a href="${verificationUrl}">
+                    Verify Email
+                </a>
+
+                <p>
+                    This link expires in 15 minutes.
+                </p>
+            `
         });
 
-        // Email verification required before login: do not auto-login
+        // Generate tokens
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        // Store refresh token in DB
+        user.refreshToken = refreshToken;
+
+        await user.save({
+            validateBeforeSave: false
+        });
+
+        // Store refresh token in HttpOnly cookie
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        // Response
         res.status(201).json({
             success: true,
-            message: "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.",
+            message: "Registration successful",
             data: {
                 user: {
                     id: user._id,
@@ -88,7 +119,7 @@ const register = async (req, res) => {
                     email: user.email,
                     role: user.role
                 },
-                requiresVerification: true
+                accessToken
             }
         });
 
@@ -152,15 +183,12 @@ const login = async (req, res) => {
             });
         }
 
-        // Verify email requirement
-        if (!user.isEmailVerified) {
-            return res.status(403).json({
-                success: false,
-                message: "Please verify your email before logging in. A verification link has been sent to your email.",
-                emailUnverified: true,
-                email: user.email
-            });
-        }
+        // if (!user.isEmailVerified) {
+        //   return res.status(403).json({
+        //       success: false,
+        //       message: "Please verify your email before logging in"
+        //   });
+// }
 
         // Generate tokens
         const accessToken = generateAccessToken(user);
@@ -173,18 +201,6 @@ const login = async (req, res) => {
         await user.save({
             validateBeforeSave: false
         });
-
-        // Asynchronously send login notification alert
-        const clientIp = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || req.ip || "Unknown";
-        const userAgent = req.headers["user-agent"] || "Web Browser";
-
-        sendLoginAlertEmail({
-            to: user.email,
-            name: user.name,
-            time: user.lastLoginAt,
-            ipAddress: clientIp,
-            userAgent
-        }).catch((err) => console.error("Login alert email failed:", err.message));
 
         // Store refresh token in HttpOnly cookie
         res.cookie("refreshToken", refreshToken, {
@@ -351,12 +367,150 @@ const getMe = async (req, res) => {
 };
 
 
+// =====================================================
+// GET PROFILE
+// =====================================================
+
+const getProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password -refreshToken");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone || "",
+                    role: user.role,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Get profile error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve profile"
+        });
+    }
+};
+
+
+// =====================================================
+// UPDATE PROFILE
+// =====================================================
+
+const updateProfile = async (req, res) => {
+    try {
+        const { name, email, phone } = req.body;
+
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Validate name if provided
+        if (name !== undefined) {
+            const trimmedName = String(name).trim();
+            if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 50) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Name must be between 2 and 50 characters"
+                });
+            }
+            user.name = trimmedName;
+        }
+
+        // Validate email if provided
+        if (email !== undefined) {
+            const trimmedEmail = String(email).toLowerCase().trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please provide a valid email address"
+                });
+            }
+
+            // If email changed, check uniqueness
+            if (trimmedEmail !== user.email) {
+                const existingUser = await User.findOne({
+                    email: trimmedEmail,
+                    _id: { $ne: user._id }
+                });
+
+                if (existingUser) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "Email is already registered to another account"
+                    });
+                }
+                user.email = trimmedEmail;
+            }
+        }
+
+        // Validate phone if provided
+        if (phone !== undefined) {
+            const trimmedPhone = String(phone).trim();
+            if (trimmedPhone !== "") {
+                const phoneRegex = /^[+]?[\d\s-]{10,15}$/;
+                if (!phoneRegex.test(trimmedPhone)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Please provide a valid phone number (10 to 15 digits)"
+                    });
+                }
+            }
+            user.phone = trimmedPhone;
+        }
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: {
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone || "",
+                    role: user.role,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Update profile error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update profile"
+        });
+    }
+};
+
+
 
 
 
 const verifyEmail = async (req, res) => {
     try {
-        const { token } = req.params;
+        const token = req.params.token || req.query?.token || req.body?.token;
 
         if (!token) {
             return res.status(400).json({
@@ -447,31 +601,45 @@ const forgotPassword = async (req, res) => {
         const resetUrl =
             `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        await sendEmail({
-            to: user.email,
-            subject: "Reset your ShopSphere password",
-            html: `
-                <h2>Password Reset</h2>
+        try {
+            await sendEmail({
+                to: user.email,
+                subject: "Reset your ShopSphere password",
+                html: `
+                    <h2>Password Reset</h2>
 
-                <p>Hello ${user.name},</p>
+                    <p>Hello ${user.name},</p>
 
-                <p>
-                    We received a request to reset your ShopSphere password.
-                </p>
+                    <p>
+                        We received a request to reset your ShopSphere password.
+                    </p>
 
-                <a href="${resetUrl}">
-                    Reset Password
-                </a>
+                    <a href="${resetUrl}">
+                        Reset Password
+                    </a>
 
-                <p>
-                    This link expires in 15 minutes.
-                </p>
+                    <p>
+                        This link expires in 15 minutes.
+                    </p>
 
-                <p>
-                    If you did not request this, you can safely ignore this email.
-                </p>
-            `
-        });
+                    <p>
+                        If you did not request this, you can safely ignore this email.
+                    </p>
+                `
+            });
+        } catch (emailErr) {
+            console.error("Forgot password email send error:", emailErr.message);
+            if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+                return res.status(503).json({
+                    success: false,
+                    message: "Email provider is not configured. Please contact administrator or configure SMTP."
+                });
+            }
+            return res.status(500).json({
+                success: false,
+                message: "Failed to send reset email. Please try again later."
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -488,9 +656,51 @@ const forgotPassword = async (req, res) => {
     }
 };
 
+const validateResetToken = async (req, res) => {
+    try {
+        const token = req.params.token || req.query?.token;
+
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "Reset token is required"
+            });
+        }
+
+        const hashedToken = hashToken(token);
+
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: {
+                $gt: new Date()
+            }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired reset token"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Reset token is valid"
+        });
+
+    } catch (error) {
+        console.error("Validate reset token error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
 const resetPassword = async (req, res) => {
     try {
-        const { token } = req.params;
+        const token = req.params.token || req.query?.token || req.body?.token;
         const { password } = req.body;
 
         if (!token || !password) {
@@ -671,12 +881,32 @@ const resendVerificationEmail = async (req, res) => {
         });
 
         const verificationUrl =
-            `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email/${verificationToken}`;
+            `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-        await sendVerificationEmail({
+        await sendEmail({
             to: user.email,
-            name: user.name,
-            verificationUrl
+            subject: "Verify your ShopSphere account",
+            html: `
+                <h2>Verify your ShopSphere account</h2>
+
+                <p>Hello ${user.name},</p>
+
+                <p>
+                    Please click the button below to verify your email address.
+                </p>
+
+                <a href="${verificationUrl}">
+                    Verify Email
+                </a>
+
+                <p>
+                    This link expires in 15 minutes.
+                </p>
+
+                <p>
+                    If you did not request this email, you can safely ignore it.
+                </p>
+            `
         });
 
         return res.status(200).json({
@@ -709,5 +939,8 @@ module.exports = {
     resetPassword,
     changePassword,
     resendVerificationEmail,
-    getMe
+    validateResetToken,
+    getMe,
+    getProfile,
+    updateProfile
 };

@@ -60,6 +60,29 @@ useEffect(() => {
   };
 }, [token]);
 
+  useEffect(() => {
+    const handleTokenRefreshed = (e) => {
+      const newToken = e.detail?.token;
+      if (newToken) {
+        setToken(newToken);
+      }
+    };
+
+    const handleAuthLogout = () => {
+      sessionStorage.removeItem("accessToken");
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener("auth:token-refreshed", handleTokenRefreshed);
+    window.addEventListener("auth:logout", handleAuthLogout);
+
+    return () => {
+      window.removeEventListener("auth:token-refreshed", handleTokenRefreshed);
+      window.removeEventListener("auth:logout", handleAuthLogout);
+    };
+  }, []);
+
   const login = (accessToken, userData) => {
     sessionStorage.setItem("accessToken", accessToken);
     setToken(accessToken);
@@ -90,9 +113,16 @@ useEffect(() => {
     }
   };
 
+  const updateUser = (updatedUser) => {
+    setUser((prev) => ({
+      ...prev,
+      ...updatedUser,
+    }));
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, logout }}
+      value={{ user, token, loading, login, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>

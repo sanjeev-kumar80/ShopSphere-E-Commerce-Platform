@@ -219,6 +219,13 @@ export default function Navbar() {
 
                 <div className="py-1">
                   <Link
+                    to="/profile"
+                    onClick={() => setAccountDropdownOpen(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    👤 My Profile & Addresses
+                  </Link>
+                  <Link
                     to="/orders"
                     onClick={() => setAccountDropdownOpen(false)}
                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
@@ -427,13 +434,22 @@ export default function Navbar() {
               )}
             </Link>
             {user && (
-              <Link
-                to="/orders"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-3 py-2 font-medium text-slate-800 hover:bg-slate-100"
-              >
-                My Orders
-              </Link>
+              <>
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2 font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  My Profile & Addresses
+                </Link>
+                <Link
+                  to="/orders"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2 font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  My Orders
+                </Link>
+              </>
             )}
 
             {/* Category listing on mobile */}

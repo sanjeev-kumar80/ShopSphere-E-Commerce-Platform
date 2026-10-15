@@ -1,211 +1,218 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 
-function VerifyEmail() {
-  const { token } = useParams();
-  const [status, setStatus] = useState("verifying"); // 'verifying' | 'success' | 'error'
-  const [message, setMessage] = useState("");
+export default function VerifyEmail() {
+  const { token: paramToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = paramToken || searchParams.get("token") || "";
+
+  const navigate = useNavigate();
+
+  const [status, setStatus] = useState(() => (token ? "verifying" : "idle"));
+  const [error, setError] = useState("");
   const [resendEmail, setResendEmail] = useState("");
-  const [resendStatus, setResendStatus] = useState({ loading: false, message: "", error: "" });
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState("");
+  const [resendError, setResendError] = useState("");
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("No verification token was provided.");
-      return;
-    }
+    if (!token) return;
 
-    const performVerification = async () => {
-      try {
-        const response = await api.get(`/auth/verify-email/${token}`);
-        setStatus("success");
-        setMessage(
-          response.data?.message ||
-            "Your email has been verified successfully! You can now log in to ShopSphere."
-        );
-      } catch (err) {
-        setStatus("error");
-        setMessage(
-          err.response?.data?.message ||
-            "The verification link is invalid or has expired. Please request a new one."
-        );
-      }
+    let active = true;
+
+    api
+      .get(`/auth/verify-email/${token}`)
+      .then(() => {
+        if (active) {
+          setStatus("success");
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setStatus("failed");
+          setError(
+            err.response?.data?.message ||
+              "Email verification link is invalid or has expired."
+          );
+        }
+      });
+
+    return () => {
+      active = false;
     };
-
-    performVerification();
   }, [token]);
 
   const handleResend = async (e) => {
     e.preventDefault();
-    if (!resendEmail.trim()) {
-      setResendStatus({ loading: false, message: "", error: "Please enter your email address." });
+    setResendError("");
+    setResendSuccess("");
+
+    const trimmed = resendEmail.trim();
+    if (!trimmed) {
+      setResendError("Please enter your registered email address.");
       return;
     }
 
-    setResendStatus({ loading: true, message: "", error: "" });
+    setResending(true);
+
     try {
-      const response = await api.post("/auth/resend-verification", {
-        email: resendEmail.trim(),
+      const res = await api.post("/auth/resend-verification", {
+        email: trimmed,
       });
-      setResendStatus({
-        loading: false,
-        message:
-          response.data?.message ||
-          "If an account exists, a new verification email has been sent.",
-        error: "",
-      });
+
+      setResendSuccess(
+        res.data?.message ||
+          "If an account exists, a new verification email has been sent."
+      );
+      setResendEmail("");
     } catch (err) {
-      setResendStatus({
-        loading: false,
-        message: "",
-        error:
-          err.response?.data?.message ||
-          "Failed to resend verification email. Please try again.",
-      });
+      setResendError(
+        err.response?.data?.message ||
+          "Failed to resend verification email. Please try again."
+      );
+    } finally {
+      setResending(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl border border-gray-100">
-        <div className="text-center">
-          <Link to="/" className="inline-block text-3xl font-extrabold tracking-tight">
-            Shop<span className="text-indigo-600">Sphere</span>
-          </Link>
-        </div>
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-slate-100">
+        <Link to="/" className="mb-8 block text-center text-3xl font-bold">
+          Shop<span className="text-indigo-600">Sphere</span>
+        </Link>
 
-        {status === "verifying" && (
-          <div className="mt-8 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50">
-              <svg
-                className="h-7 w-7 animate-spin text-indigo-600"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8H4z"
-                ></path>
-              </svg>
-            </div>
-            <h2 className="mt-5 text-xl font-bold text-gray-900">
+        {status === "verifying" ? (
+          <div className="py-10 text-center space-y-3">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <h1 className="text-xl font-bold text-slate-800">
               Verifying your email...
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Please wait while we confirm your account details.
+            </h1>
+            <p className="text-xs text-slate-500">
+              Please wait while we confirm your email address.
             </p>
           </div>
-        )}
-
-        {status === "success" && (
-          <div className="mt-8 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+        ) : status === "success" ? (
+          <div className="text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
               <svg
-                className="h-8 w-8 text-green-600"
+                className="w-7 h-7"
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
                 viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
               </svg>
             </div>
-            <h2 className="mt-5 text-2xl font-bold text-gray-900">
-              Account Verified! 🎉
-            </h2>
-            <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-              {message}
+
+            <h1 className="text-2xl font-bold text-gray-900">
+              Email Verified!
+            </h1>
+
+            <p className="text-sm text-gray-600">
+              Your email address has been verified successfully. You now have full
+              access to ShopSphere.
             </p>
-            <div className="mt-7">
-              <Link
-                to="/login"
-                className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition"
+
+            <div className="pt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => navigate("/login", { replace: true })}
+                className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition"
               >
-                Proceed to Login
+                Continue to Login
+              </button>
+
+              <Link
+                to="/shop"
+                className="block text-center text-xs font-semibold text-slate-600 hover:text-indigo-600 transition pt-1"
+              >
+                Browse Products
               </Link>
             </div>
           </div>
-        )}
-
-        {status === "error" && (
-          <div className="mt-8">
-            <div className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+        ) : (
+          <div className="space-y-5">
+            <div className="text-center space-y-2">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
                 <svg
-                  className="h-8 w-8 text-red-600"
+                  className="w-7 h-7"
                   fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
                   viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
                   />
                 </svg>
               </div>
-              <h2 className="mt-5 text-xl font-bold text-gray-900">
-                Verification Failed
-              </h2>
-              <p className="mt-2 text-sm text-gray-600">{message}</p>
+
+              <h1 className="text-2xl font-bold text-gray-900">
+                {status === "failed" ? "Verification Failed" : "Verify Your Email"}
+              </h1>
+
+              <p className="text-sm text-gray-600">
+                {error ||
+                  "Please verify your email address to unlock all account capabilities."}
+              </p>
             </div>
 
-            <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Need a new verification link?
-              </h3>
-              <p className="mt-1 text-xs text-gray-500">
-                Enter your registered email address below and we'll send you a fresh link.
+            {/* Resend Verification Form */}
+            <div className="border-t border-slate-100 pt-4">
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                Resend Verification Link
+              </h2>
+              <p className="text-xs text-slate-500 mb-3">
+                Enter your account email to receive a new verification link.
               </p>
 
-              {resendStatus.message && (
-                <p className="mt-3 rounded-lg bg-green-50 p-2.5 text-xs font-medium text-green-800">
-                  {resendStatus.message}
+              {resendError && (
+                <p className="mb-3 rounded-lg bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">
+                  {resendError}
                 </p>
               )}
 
-              {resendStatus.error && (
-                <p className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs font-medium text-red-700">
-                  {resendStatus.error}
+              {resendSuccess && (
+                <p className="mb-3 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800">
+                  {resendSuccess}
                 </p>
               )}
 
-              <form onSubmit={handleResend} className="mt-4 space-y-3">
+              <form onSubmit={handleResend} className="space-y-3">
                 <input
                   type="email"
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="yourname@example.com"
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                 />
+
                 <button
                   type="submit"
-                  disabled={resendStatus.loading}
-                  className="w-full rounded-lg bg-indigo-600 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition"
+                  disabled={resending}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {resendStatus.loading ? "Sending..." : "Resend Verification Email"}
+                  {resending && (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  )}
+                  <span>{resending ? "Sending..." : "Resend Verification Email"}</span>
                 </button>
               </form>
             </div>
 
-            <div className="mt-6 text-center">
-              <Link
-                to="/login"
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-500"
-              >
-                &larr; Back to Login
+            <div className="text-center pt-2">
+              <Link to="/login" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                ← Back to Login
               </Link>
             </div>
           </div>
@@ -214,5 +221,3 @@ function VerifyEmail() {
     </main>
   );
 }
-
-export default VerifyEmail;

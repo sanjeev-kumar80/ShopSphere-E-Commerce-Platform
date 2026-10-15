@@ -18,8 +18,12 @@ const {
     productIdValidator,
     validateRequest
 } = require("../validators/productValidator");
+const reviewRoutes = require("./reviewRoutes");
 
 const router = express.Router();
+
+// Forward review routes for /api/products/:productId/reviews
+router.use("/:productId/reviews", reviewRoutes);
 
 
 // Public routes

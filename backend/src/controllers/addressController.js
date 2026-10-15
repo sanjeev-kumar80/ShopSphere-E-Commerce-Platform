@@ -92,6 +92,14 @@ const addAddress = async (req, res) => {
     } catch (error) {
         console.error("Add address error:", error);
 
+        if (error.name === "ValidationError") {
+            const firstErrorMessage = Object.values(error.errors)[0]?.message || "Validation failed";
+            return res.status(400).json({
+                success: false,
+                message: firstErrorMessage
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: "Failed to add address"
@@ -163,6 +171,14 @@ const updateAddress = async (req, res) => {
 
     } catch (error) {
         console.error("Update address error:", error);
+
+        if (error.name === "ValidationError") {
+            const firstErrorMessage = Object.values(error.errors)[0]?.message || "Validation failed";
+            return res.status(400).json({
+                success: false,
+                message: firstErrorMessage
+            });
+        }
 
         return res.status(500).json({
             success: false,
