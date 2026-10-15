@@ -4,6 +4,7 @@ const Cart = require("../models/Cart");
 const Address = require("../models/Address");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const { sendOrderConfirmationEmail } = require("../services/emailService");
 
 
 // Place Order
@@ -142,6 +143,15 @@ const createOrder = async (req, res) => {
         cart.total = 0;
 
         await cart.save();
+
+        // Send order confirmation email for Cash on Delivery orders
+        if (paymentMethod === "COD") {
+            sendOrderConfirmationEmail({
+                to: req.user.email,
+                name: req.user.name || order.shippingAddress?.fullName || "Valued Customer",
+                order
+            }).catch((err) => console.error("Order confirmation email failed:", err.message));
+        }
 
         return res.status(201).json({
             success: true,

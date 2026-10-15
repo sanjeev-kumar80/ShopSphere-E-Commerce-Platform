@@ -11,7 +11,11 @@ const {
     hashToken
 } = require("../utils/randomToken");
 
-const { sendEmail } = require("../services/emailService");
+const {
+    sendEmail,
+    sendVerificationEmail,
+    sendLoginAlertEmail
+} = require("../services/emailService");
 
 
 
@@ -65,53 +69,18 @@ const register = async (req, res) => {
         });
 
         const verificationUrl =
-        `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+            `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email/${verificationToken}`;
 
-        await sendEmail({
+        await sendVerificationEmail({
             to: user.email,
-            subject: "Verify your ShopSphere account",
-            html: `
-                <h2>Welcome to ShopSphere</h2>
-
-                <p>Hello ${user.name},</p>
-
-                <p>
-                    Please verify your email address by clicking the button below.
-                </p>
-
-                <a href="${verificationUrl}">
-                    Verify Email
-                </a>
-
-                <p>
-                    This link expires in 15 minutes.
-                </p>
-            `
+            name: user.name,
+            verificationUrl
         });
 
-        // Generate tokens
-        const accessToken = generateAccessToken(user);
-        const refreshToken = generateRefreshToken(user);
-
-        // Store refresh token in DB
-        user.refreshToken = refreshToken;
-
-        await user.save({
-            validateBeforeSave: false
-        });
-
-        // Store refresh token in HttpOnly cookie
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
-
-        // Response
+        // Email verification required before login: do not auto-login
         res.status(201).json({
             success: true,
-            message: "Registration successful",
+            message: "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.",
             data: {
                 user: {
                     id: user._id,
@@ -119,7 +88,7 @@ const register = async (req, res) => {
                     email: user.email,
                     role: user.role
                 },
-                accessToken
+                requiresVerification: true
             }
         });
 
@@ -183,12 +152,15 @@ const login = async (req, res) => {
             });
         }
 
-        // if (!user.isEmailVerified) {
-        //   return res.status(403).json({
-        //       success: false,
-        //       message: "Please verify your email before logging in"
-        //   });
-// }
+        // Verify email requirement
+        if (!user.isEmailVerified) {
+            return res.status(403).json({
+                success: false,
+                message: "Please verify your email before logging in. A verification link has been sent to your email.",
+                emailUnverified: true,
+                email: user.email
+            });
+        }
 
         // Generate tokens
         const accessToken = generateAccessToken(user);
@@ -201,6 +173,18 @@ const login = async (req, res) => {
         await user.save({
             validateBeforeSave: false
         });
+
+        // Asynchronously send login notification alert
+        const clientIp = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || req.ip || "Unknown";
+        const userAgent = req.headers["user-agent"] || "Web Browser";
+
+        sendLoginAlertEmail({
+            to: user.email,
+            name: user.name,
+            time: user.lastLoginAt,
+            ipAddress: clientIp,
+            userAgent
+        }).catch((err) => console.error("Login alert email failed:", err.message));
 
         // Store refresh token in HttpOnly cookie
         res.cookie("refreshToken", refreshToken, {
@@ -687,32 +671,12 @@ const resendVerificationEmail = async (req, res) => {
         });
 
         const verificationUrl =
-            `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+            `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email/${verificationToken}`;
 
-        await sendEmail({
+        await sendVerificationEmail({
             to: user.email,
-            subject: "Verify your ShopSphere account",
-            html: `
-                <h2>Verify your ShopSphere account</h2>
-
-                <p>Hello ${user.name},</p>
-
-                <p>
-                    Please click the button below to verify your email address.
-                </p>
-
-                <a href="${verificationUrl}">
-                    Verify Email
-                </a>
-
-                <p>
-                    This link expires in 15 minutes.
-                </p>
-
-                <p>
-                    If you did not request this email, you can safely ignore it.
-                </p>
-            `
+            name: user.name,
+            verificationUrl
         });
 
         return res.status(200).json({
