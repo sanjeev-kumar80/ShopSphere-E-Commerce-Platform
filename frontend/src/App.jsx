@@ -18,6 +18,7 @@ import MyOrders from "./pages/customer/MyOrders";
 import OrderDetails from "./pages/customer/OrderDetails";
 import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerRegister from "./pages/customer/CustomerRegister";
+import VerifyEmail from "./pages/customer/VerifyEmail";
 import CustomerProtectedRoute from "./components/CustomerProtectedRoute";
 
 // Admin Pages
@@ -85,6 +86,8 @@ function App() {
             {/* Customer Auth Pages */}
             <Route path="/login" element={<CustomerLogin />} />
             <Route path="/register" element={<CustomerRegister />} />
+            <Route path="/verify-email/:token" element={<VerifyEmail />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Admin Portal */}
             <Route path="/admin/login" element={<AdminLogin />} />

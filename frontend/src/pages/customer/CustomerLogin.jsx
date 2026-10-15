@@ -11,6 +11,8 @@ function CustomerLogin() {
   });
 
   const [error, setError] = useState("");
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [resendStatus, setResendStatus] = useState({ loading: false, message: "", error: "" });
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
@@ -25,9 +27,34 @@ function CustomerLogin() {
     }));
   };
 
+  const handleResend = async () => {
+    const targetEmail = form.email.trim();
+    if (!targetEmail) return;
+
+    setResendStatus({ loading: true, message: "", error: "" });
+    try {
+      const response = await api.post("/auth/resend-verification", {
+        email: targetEmail,
+      });
+      setResendStatus({
+        loading: false,
+        message: response.data?.message || "Verification email sent! Please check your inbox.",
+        error: "",
+      });
+    } catch (err) {
+      setResendStatus({
+        loading: false,
+        message: "",
+        error: err.response?.data?.message || "Failed to resend. Please try again later.",
+      });
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setIsUnverified(false);
+    setResendStatus({ loading: false, message: "", error: "" });
     setLoading(true);
 
     try {
@@ -40,7 +67,7 @@ function CustomerLogin() {
 
       if (user.role !== "USER") {
         setError(
-          "Admin account hai? Please admin login page use karo."
+          "Admin account detected. Please use the admin login portal."
         );
         return;
       }
@@ -51,9 +78,12 @@ function CustomerLogin() {
       // Redirect to the main ShopSphere homepage
       navigate("/", { replace: true });
     } catch (err) {
+      const data = err.response?.data;
+      if (data?.emailUnverified || err.response?.status === 403) {
+        setIsUnverified(true);
+      }
       setError(
-        err.response?.data?.message ||
-          "Login failed. Please try again."
+        data?.message || "Login failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -62,7 +92,7 @@ function CustomerLogin() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-gray-100">
         <Link
           to="/"
           className="mb-8 block text-center text-3xl font-bold"
@@ -78,7 +108,35 @@ function CustomerLogin() {
           Login to continue shopping.
         </p>
 
-        {error && (
+        {isUnverified && (
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+            <div className="flex items-start gap-2.5">
+              <span className="text-base">✉️</span>
+              <div>
+                <p className="font-semibold text-amber-950">Email Verification Required</p>
+                <p className="mt-1 text-amber-800">
+                  Please verify your email address to log in. Check your spam folder if you can't find it.
+                </p>
+                {resendStatus.message && (
+                  <p className="mt-2 font-medium text-emerald-700">{resendStatus.message}</p>
+                )}
+                {resendStatus.error && (
+                  <p className="mt-2 font-medium text-red-600">{resendStatus.error}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendStatus.loading}
+                  className="mt-2.5 inline-block font-bold text-indigo-700 underline hover:text-indigo-900 disabled:opacity-50"
+                >
+                  {resendStatus.loading ? "Sending link..." : "Resend Verification Email"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && !isUnverified && (
           <p
             role="alert"
             className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700"
