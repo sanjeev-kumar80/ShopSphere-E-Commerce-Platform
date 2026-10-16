@@ -36,11 +36,47 @@ const slides = [
 ];
 
 const categoryVisuals = {
-  electronics: {
-    subtitle: "Smart picks for you",
+  "audio-wearables": {
+    subtitle: "Immersive sound & gear",
     image:
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=700&q=80",
     tone: "category-purple",
+  },
+  "audio & wearables": {
+    subtitle: "Immersive sound & gear",
+    image:
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=700&q=80",
+    tone: "category-purple",
+  },
+  "beauty-grooming": {
+    subtitle: "Daily glow & self care",
+    image:
+      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=700&q=80",
+    tone: "category-peach",
+  },
+  "beauty & grooming": {
+    subtitle: "Daily glow & self care",
+    image:
+      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=700&q=80",
+    tone: "category-peach",
+  },
+  electronics: {
+    subtitle: "Smart picks for you",
+    image:
+      "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=700&q=80",
+    tone: "category-blue",
+  },
+  "fashion-apparel": {
+    subtitle: "Your everyday style",
+    image:
+      "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=700&q=80",
+    tone: "category-peach",
+  },
+  "fashion & apparel": {
+    subtitle: "Your everyday style",
+    image:
+      "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=700&q=80",
+    tone: "category-peach",
   },
   fashion: {
     subtitle: "Your everyday style",
@@ -54,19 +90,90 @@ const categoryVisuals = {
       "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80",
     tone: "category-blue",
   },
-  lifestyle: {
-    subtitle: "Little things, big joy",
+  "home-living": {
+    subtitle: "Craft your sanctuary",
     image:
-      "https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=700&q=80",
     tone: "category-green",
+  },
+  "home & living": {
+    subtitle: "Craft your sanctuary",
+    image:
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=700&q=80",
+    tone: "category-green",
+  },
+  lifestyle: {
+    subtitle: "Craft your sanctuary",
+    image:
+      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=700&q=80",
+    tone: "category-green",
+  },
+  "sports-fitness": {
+    subtitle: "Gear up for greatness",
+    image:
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=700&q=80",
+    tone: "category-purple",
+  },
+  "sports & fitness": {
+    subtitle: "Gear up for greatness",
+    image:
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=700&q=80",
+    tone: "category-purple",
+  },
+  fitness: {
+    subtitle: "Gear up for greatness",
+    image:
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=700&q=80",
+    tone: "category-purple",
+  },
+  sports: {
+    subtitle: "Gear up for greatness",
+    image:
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=700&q=80",
+    tone: "category-purple",
   },
 };
 
 const defaultCategoryVisual = {
   subtitle: "Discover something new",
   image:
-    "https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=700&q=80",
   tone: "category-purple",
+};
+
+const getCategoryVisual = (category) => {
+  const slugKey = category?.slug?.toLowerCase().trim();
+  const nameKey = category?.name?.toLowerCase().trim();
+
+  let matched =
+    (slugKey && categoryVisuals[slugKey]) ||
+    (nameKey && categoryVisuals[nameKey]);
+
+  if (!matched && (slugKey || nameKey)) {
+    const combined = `${slugKey || ""} ${nameKey || ""}`;
+    const foundEntry = Object.entries(categoryVisuals).find(([key]) =>
+      combined.includes(key)
+    );
+    if (foundEntry) {
+      matched = foundEntry[1];
+    }
+  }
+
+  const baseVisual = matched || defaultCategoryVisual;
+
+  const validBackendImage =
+    category?.image &&
+    typeof category.image === "string" &&
+    category.image.trim() !== "" &&
+    !category.image.includes("photo-1490312278390-ab64016e0aa9");
+
+  const chosenImage = validBackendImage ? category.image : baseVisual.image;
+
+  return {
+    ...baseVisual,
+    image: chosenImage,
+    fallbackImage: baseVisual.image,
+  };
 };
 
 const benefits = [
@@ -276,9 +383,7 @@ function Home() {
           ) : (
             <div className="category-grid">
               {categories.map((category, index) => {
-                const visual =
-                  categoryVisuals[category.name?.toLowerCase()] ||
-                  defaultCategoryVisual;
+                const visual = getCategoryVisual(category);
 
                 return (
                   <Link
@@ -291,6 +396,11 @@ function Home() {
                         src={visual.image}
                         alt={category.name}
                         loading="lazy"
+                        onError={(e) => {
+                          if (e.currentTarget.src !== visual.fallbackImage) {
+                            e.currentTarget.src = visual.fallbackImage;
+                          }
+                        }}
                       />
                       <span className="category-number">
                         {String(index + 1).padStart(2, "0")}
@@ -419,3 +529,4 @@ function Home() {
 }
 
 export default Home;
+
