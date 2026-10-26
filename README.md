@@ -1,47 +1,107 @@
-# ShopSphere-E-Commerce-Platform
+ ShopSphere - Full Stack E-Commerce Platform
+A modern full-stack e-commerce platform built using React, Node.js, Express, MongoDB, and Cloudinary. ShopSphere provides a complete shopping experience for customers and a powerful admin dashboard for store management.
 
-ShopSphere is a **MERN Stack based E-Commerce Platform** that aims to provide a simple and user-friendly online shopping experience.
+ Features:-
+-> Customer Features
+User Authentication & Authorization
+Browse Products by Category and Brand
+Product Search and Filtering
+Product Variants (Size, Color, etc.)
+Shopping Cart Management
+Wishlist Support
+Secure Checkout Flow
+Order History Tracking
+Profile Management
 
-The project is currently in the **initial development phase**. More features and functionalities will be added as the development progresses.
+-> Admin Features
+Admin Dashboard
+Product Management
+Category Management
+Brand Management
+Order Management
+Inventory Tracking
+Customer Overview
+Revenue Statistics
+Product Image Uploads via Cloudinary
 
-## Project Description
+-> Dashboard Analytics
+Total Products
+Total Orders
+Total Customers
+Total Revenue
+Pending Orders Tracking
 
-ShopSphere is being developed using the **MERN Stack**, including MongoDB, Express.js, React.js, and Node.js.
+-> Integrations
+Cloudinary Image Storage
+JWT Authentication
+REST API Architecture
 
-The main purpose of this project is to build an e-commerce platform where users can browse products, manage their cart, and place orders. The project will also include user authentication and product management features.
+-> Tech Stack
+Frontend
+React.js
+React Router
+Tailwind CSS
+Context API
+Axios
+Backend
+Node.js
+Express.js
+MongoDB
+Mongoose
+Authentication
+JWT Authentication
+Role Based Access Control
+Media Management
+Cloudinary
 
-## Technologies Used
-
-* React.js
-* Node.js
-* Express.js
-* MongoDB
-* JavaScript
-* HTML
-* CSS
-* Git & GitHub
-
-## Planned Features
-
-* User Registration & Login
-* Product Listing
-* Product Details
-* Product Search
-* Shopping Cart
-* Order Management
-* User Profile
-* Admin Panel
-* Product Management
-
-## Project Status
-
- **Currently under development**
-
-The project is in its initial stage, and features will be implemented step by step.
-
-## Future Updates
-
-More features, screenshots, project structure, setup instructions, and documentation will be added as the project progresses.
+Deployment
+Vercel (Frontend)
+Render / Railway (Backend)
+MongoDB Atlas
 
 
-GitHub: `sanjeev-kumar80`
+⚙️ Installation
+Clone Repository
+git clone https://github.com/sanjeev-kumar80/ShopSphere-E-Commerce-Platform.git
+
+Frontend Setup
+cd frontend
+npm install
+npm run dev
+
+Backend Setup
+cd backend
+npm install
+npm run dev
+
+ Environment Variables Create 
+ `.env` file inside backend. 
+
+ env PORT=5000
+MONGO_URI=your_mongodb_connection 
+
+JWT_SECRET=your_secret_key 
+
+CLOUDINARY_CLOUD_NAME=your_cloud_name 
+CLOUDINARY_API_KEY=your_api_key 
+CLOUDINARY_API_SECRET=your_api_secret
+
+ API Modules
+Authentication API
+Product API
+Category API
+Brand API
+Cart API
+Wishlist API
+Order API
+Upload API
+Admin Dashboard API
+
+👨‍💻 Author
+Sanjeev Kumar
+
+Bachelor of Technology
+
+GLA University
+
+GitHub: https://github.com/sanjeev-kumar80
