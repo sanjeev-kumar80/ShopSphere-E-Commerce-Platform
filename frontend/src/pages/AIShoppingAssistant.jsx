@@ -58,17 +58,23 @@ export default function AIShoppingAssistant() {
 
     try {
       // Build history payload (roles: user or assistant)
-      const historyPayload = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const historyPayload = messages
+        .filter(
+          (m) =>
+            !m.isError && (m.role === "user" || m.role === "assistant")
+        )
+        .slice(-20)
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
 
       const res = await aiService.sendMessage(userText, historyPayload);
 
       const assistantMessage = {
         role: "assistant",
         content: res.reply,
-        provider: res.provider ? res.provider.toUpperCase() : activeProvider,
+        provider: res.provider ? res.provider.toUpperCase() : undefined,
         model: res.model,
         fallbackOccurred: res.fallbackOccurred,
         products: res.products || [],
@@ -81,7 +87,7 @@ export default function AIShoppingAssistant() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       if (res.fallbackOccurred) {
-        showToast("info", `Response routed via fallback provider (${res.provider})`);
+        showToast(`Response routed via fallback provider (${res.provider})`, "info");
       }
     } catch (error) {
       const errorMessage = {
@@ -95,7 +101,7 @@ export default function AIShoppingAssistant() {
       };
 
       setMessages((prev) => [...prev, errorMessage]);
-      showToast("error", "AI service temporary error. Please retry.");
+      showToast("AI service temporary error. Please retry.", "error");
     } finally {
       setLoading(false);
     }
@@ -104,7 +110,7 @@ export default function AIShoppingAssistant() {
   // Handle clearing the conversation
   const handleClearChat = () => {
     setMessages([]);
-    showToast("info", "Conversation cleared");
+    showToast("Conversation cleared", "info");
   };
 
   return (
@@ -202,6 +208,7 @@ export default function AIShoppingAssistant() {
             messages={messages}
             loading={loading}
             activeProvider={activeProvider}
+            gatewayStatus={gatewayStatus}
             user={user}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}

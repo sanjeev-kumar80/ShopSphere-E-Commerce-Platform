@@ -14,12 +14,41 @@ export default function ChatWindow({
   messages = [],
   loading = false,
   activeProvider = "ShopSphere AI",
+  gatewayStatus = null,
   user = null,
   onSendMessage,
   onClearChat,
   onSelectSuggestedQuestion,
 }) {
   const messagesEndRef = useRef(null);
+
+  const providerHealth =
+    gatewayStatus?.providers && typeof gatewayStatus.providers === "object"
+      ? Object.values(gatewayStatus.providers)
+      : [];
+  const healthyProviderCount = providerHealth.filter(
+    (provider) => provider?.healthy === true
+  ).length;
+  const serviceStatus =
+    providerHealth.length === 0
+      ? "Status Unknown"
+      : healthyProviderCount === 0
+        ? "Unavailable"
+        : healthyProviderCount < providerHealth.length
+          ? "Degraded"
+          : "Live Online";
+  const serviceStatusStyles = {
+    "Live Online": "bg-emerald-50 text-emerald-700",
+    Degraded: "bg-amber-50 text-amber-700",
+    Unavailable: "bg-rose-50 text-rose-700",
+    "Status Unknown": "bg-slate-100 text-slate-600",
+  };
+  const serviceStatusDotStyles = {
+    "Live Online": "bg-emerald-500 animate-pulse",
+    Degraded: "bg-amber-500",
+    Unavailable: "bg-rose-500",
+    "Status Unknown": "bg-slate-400",
+  };
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -41,13 +70,16 @@ export default function ChatWindow({
               <h2 className="text-sm font-bold text-slate-900">
                 ShopSphere Assistant
               </h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Online
+              <span
+                role="status"
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${serviceStatusStyles[serviceStatus]}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${serviceStatusDotStyles[serviceStatus]}`} />
+                {serviceStatus}
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Powered by {activeProvider} • Grounded in Store Catalog
+              Primary provider: {activeProvider} • Grounded in Store Catalog
             </p>
           </div>
         </div>
@@ -99,7 +131,7 @@ export default function ChatWindow({
               <ChatMessage key={index} message={msg} user={user} />
             ))}
 
-            {loading && <TypingIndicator provider={activeProvider} />}
+            {loading && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </>
         )}
