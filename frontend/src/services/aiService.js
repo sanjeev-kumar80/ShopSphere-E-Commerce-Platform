@@ -43,15 +43,17 @@ export const aiService = {
       throw new Error(response.data?.message || "Invalid AI response format");
     } catch (error) {
       if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
+        throw new Error(error.response.data.message, { cause: error });
       }
       if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
         throw new Error(
-          "The AI Assistant took too long to respond. Please try again."
+          "The AI Assistant took too long to respond. Please try again.",
+          { cause: error }
         );
       }
       throw new Error(
-        error.message || "Unable to reach the AI assistant. Please check your connection."
+        error.message || "Unable to reach the AI assistant. Please check your connection.",
+        { cause: error }
       );
     }
   },

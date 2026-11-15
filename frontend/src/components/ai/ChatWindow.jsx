@@ -15,7 +15,6 @@ export default function ChatWindow({
   loading = false,
   activeProvider = "ShopSphere AI",
   gatewayStatus = null,
-  user = null,
   onSendMessage,
   onClearChat,
   onSelectSuggestedQuestion,
@@ -128,7 +127,7 @@ export default function ChatWindow({
           /* Message List */
           <>
             {messages.map((msg, index) => (
-              <ChatMessage key={index} message={msg} user={user} />
+              <ChatMessage key={index} message={msg} />
             ))}
 
             {loading && <TypingIndicator />}

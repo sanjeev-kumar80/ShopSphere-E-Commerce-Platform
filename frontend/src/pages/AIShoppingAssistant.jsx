@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import { useStore } from "../context/StoreContext";
 import { aiService } from "../services/aiService";
 import ChatWindow from "../components/ai/ChatWindow";
 import { SparklesIcon, ShieldCheckIcon, TruckIcon } from "../components/Icons";
 
 export default function AIShoppingAssistant() {
-  const { user } = useAuth();
   const { showToast } = useStore();
 
   const [messages, setMessages] = useState([]);
@@ -177,7 +175,7 @@ export default function AIShoppingAssistant() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-indigo-600 font-bold">•</span>
-                <span>Multi-provider fallback (Ollama, Gemini, Groq) ensures 99.9% uptime.</span>
+                <span>Provider fallback can try another configured AI service if one is unavailable.</span>
               </li>
             </ul>
           </div>
@@ -209,7 +207,6 @@ export default function AIShoppingAssistant() {
             loading={loading}
             activeProvider={activeProvider}
             gatewayStatus={gatewayStatus}
-            user={user}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
             onSelectSuggestedQuestion={handleSendMessage}

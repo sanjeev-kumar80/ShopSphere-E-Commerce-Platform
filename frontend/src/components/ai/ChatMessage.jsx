@@ -58,7 +58,7 @@ function renderInlineMarkdown(text) {
  * Renders individual user and assistant message bubbles with support for
  * recommended product cards and provider metadata.
  */
-export default function ChatMessage({ message, user }) {
+export default function ChatMessage({ message }) {
   const isUser = message.role === "user";
   const isError = message.isError;
   const products = message.products || [];
