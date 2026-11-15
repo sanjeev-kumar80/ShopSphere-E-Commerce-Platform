@@ -1,4 +1,5 @@
 const Product = require("../../models/Product");
+const { logSafeDiagnostic } = require("../utils/safeDiagnostics");
 const Category = require("../../models/Category");
 const Brand = require("../../models/Brand");
 
@@ -213,7 +214,7 @@ class ProductContextService {
             // A specific query with no catalog match must not be replaced by unrelated featured items.
             return this._filterEligibleProducts(products, budget);
         } catch (error) {
-            console.error("ProductContextService.searchProducts error:", error.message);
+            logSafeDiagnostic("Product context search failed", error);
             throw error;
         }
     }
@@ -266,7 +267,7 @@ class ProductContextService {
                 .lean();
             return this._filterEligibleProducts(products);
         } catch (error) {
-            console.error("ProductContextService.getFeaturedProducts error:", error.message);
+            logSafeDiagnostic("Featured product lookup failed", error);
             return [];
         }
     }

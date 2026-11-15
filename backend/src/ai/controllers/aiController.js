@@ -1,6 +1,15 @@
 const { defaultGateway } = require("../services/aiGateway");
 const productContextService = require("../services/productContextService");
 const promptTemplates = require("../prompts/promptTemplates");
+const { logSafeDiagnostic } = require("../utils/safeDiagnostics");
+
+const sanitizeAttempts = (attempts = []) => attempts.map((attempt) => ({
+    provider: attempt.provider,
+    success: attempt.success === true,
+    ...(Number.isFinite(attempt.durationMs)
+        ? { durationMs: attempt.durationMs }
+        : {})
+}));
 
 /**
  * AI Controller
@@ -15,15 +24,32 @@ const promptTemplates = require("../prompts/promptTemplates");
 const getAIStatus = async (req, res) => {
     try {
         const status = await defaultGateway.getProvidersStatus();
+        const providers = Object.fromEntries(
+            Object.entries(status.providers || {}).map(([name, providerStatus]) => [
+                name,
+                {
+                    provider: name,
+                    healthy: providerStatus?.healthy === true,
+                    ...(Number.isFinite(providerStatus?.latencyMs)
+                        ? { latencyMs: providerStatus.latencyMs }
+                        : {})
+                }
+            ])
+        );
+
         return res.status(200).json({
             success: true,
-            data: status
+            data: {
+                primaryProvider: status.primaryProvider,
+                providers,
+                timestamp: status.timestamp
+            }
         });
     } catch (error) {
+        logSafeDiagnostic("Provider status check failed", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve AI providers status",
-            error: error.message
+            message: "AI provider status is temporarily unavailable."
         });
     }
 };
@@ -45,10 +71,10 @@ const getAvailableModels = async (req, res) => {
             }
         });
     } catch (error) {
+        logSafeDiagnostic("Model listing failed", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve AI models",
-            error: error.message
+            message: "AI model information is temporarily unavailable."
         });
     }
 };
@@ -105,16 +131,16 @@ const chat = async (req, res) => {
                 provider: result.provider,
                 model: result.model,
                 fallbackOccurred: result.fallbackOccurred,
-                attempts: result.attempts,
+                attempts: sanitizeAttempts(result.attempts),
                 usage: result.usage,
                 products: relevantProducts
             }
         });
     } catch (error) {
+        logSafeDiagnostic("Chat request failed", error);
         return res.status(502).json({
             success: false,
-            message: error.message || "AI providers could not process the request",
-            attempts: error.attempts || []
+            message: "The AI assistant is temporarily unavailable. Please try again later."
         });
     }
 };
