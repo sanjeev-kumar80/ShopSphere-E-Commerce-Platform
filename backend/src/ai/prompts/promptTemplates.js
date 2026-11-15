@@ -1,4 +1,6 @@
 const SYSTEM_PROMPTS = require("./systemPrompts");
+const MAX_HISTORY_MESSAGES_FOR_PROMPT = 10;
+const MAX_HISTORY_CONTENT_CHARACTERS = 1200;
 
 /**
  * Prompt Templates
@@ -29,11 +31,11 @@ const promptTemplates = {
 
         // Append recent conversation history (sanitized to role & content)
         if (Array.isArray(history) && history.length > 0) {
-            for (const h of history) {
+            for (const h of history.slice(-MAX_HISTORY_MESSAGES_FOR_PROMPT)) {
                 if (h.role && h.content) {
                     messages.push({
                         role: h.role === "assistant" || h.role === "model" ? "assistant" : "user",
-                        content: String(h.content)
+                        content: String(h.content).slice(-MAX_HISTORY_CONTENT_CHARACTERS)
                     });
                 }
             }

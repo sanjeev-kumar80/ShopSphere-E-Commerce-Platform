@@ -9,6 +9,7 @@ class GeminiProvider extends BaseAIProvider {
         super("gemini", config);
         this.apiKey = config.apiKey || "";
         this.model = config.model || "gemini-1.5-flash";
+        this.maxOutputTokens = config.maxOutputTokens || 128;
         this.apiVersion = config.apiVersion || "v1beta";
         this.timeoutMs = config.timeoutMs || 15000;
         this.temperature = config.temperature ?? 0.7;
@@ -138,6 +139,7 @@ class GeminiProvider extends BaseAIProvider {
 
         const model = options.model || this.model;
         const temperature = options.temperature ?? this.temperature;
+        const maxOutputTokens = options.maxOutputTokens || this.maxOutputTokens;
         const timeoutMs = options.timeoutMs || this.timeoutMs;
 
         const { systemInstruction, contents } = this._formatContents(messages);
@@ -145,7 +147,8 @@ class GeminiProvider extends BaseAIProvider {
         const requestBody = {
             contents,
             generationConfig: {
-                temperature
+                temperature,
+                maxOutputTokens
             }
         };
 
