@@ -74,8 +74,8 @@ cd backend
 npm install
 npm run dev
 
- Environment Variables Create 
- `.env` file inside backend. 
+Environment Variables
+From the backend directory, copy `.env.example` to `.env` and fill in the values required for your local setup. Keep `.env` private and do not commit it.
 
  env PORT=5000
 MONGO_URI=your_mongodb_connection 
@@ -85,6 +85,11 @@ JWT_SECRET=your_secret_key
 CLOUDINARY_CLOUD_NAME=your_cloud_name 
 CLOUDINARY_API_KEY=your_api_key 
 CLOUDINARY_API_SECRET=your_api_secret
+
+AI Shopping Assistant Setup
+The backend AI gateway defaults to Ollama as the primary provider, followed by Gemini and Groq as fallbacks (`AI_PRIMARY_PROVIDER` and `AI_FALLBACK_ORDER` in `backend/.env.example`). Ollama defaults to `http://localhost:11434` and model `qwen2.5:3b`; start Ollama and make that model available locally.
+
+To enable the cloud fallbacks, set `GEMINI_API_KEY` and `GROQ_API_KEY` in your private `backend/.env`. These credentials are optional when using Ollama alone. Provider models, endpoints, and timeouts can be overridden with the corresponding `GEMINI_*`, `GROQ_*`, and `OLLAMA_*` variables shown in `backend/.env.example` and the backend AI configuration. Never put real provider keys in source control.
 
  API Modules
 Authentication API

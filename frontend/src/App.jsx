@@ -23,6 +23,7 @@ import ForgotPassword from "./pages/customer/ForgotPassword";
 import ResetPassword from "./pages/customer/ResetPassword";
 import VerifyEmail from "./pages/customer/VerifyEmail";
 import CustomerProtectedRoute from "./components/CustomerProtectedRoute";
+import AIShoppingAssistant from "./pages/AIShoppingAssistant";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -72,6 +73,7 @@ function App() {
               <Route path="/shop" element={<Products />} />
               <Route path="/products/:id" element={<ProductDetails />} />
               <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/ai-assistant" element={<AIShoppingAssistant />} />
 
               {/* Protected Customer Routes */}
               <Route element={<CustomerProtectedRoute />}>
