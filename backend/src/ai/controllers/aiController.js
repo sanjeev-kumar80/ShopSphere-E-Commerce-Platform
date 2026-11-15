@@ -66,8 +66,28 @@ const chat = async (req, res) => {
         let relevantProducts = [];
         if (includeContext) {
             relevantProducts = await productContextService.searchProducts(message, 4);
-            if (relevantProducts.length > 0) {
-                catalogContext = productContextService.formatProductsForContext(relevantProducts);
+            catalogContext = productContextService.formatProductsForContext(relevantProducts);
+
+            const budget = productContextService.extractBudget(message);
+            if (budget !== null && relevantProducts.length === 0) {
+                const formattedBudget = new Intl.NumberFormat("en-IN", {
+                    style: "currency",
+                    currency: "INR",
+                    maximumFractionDigits: 2
+                }).format(budget);
+
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        reply: `I couldn't find any active, in-stock products priced at or below ${formattedBudget}. Try a higher budget or a broader search.`,
+                        provider: null,
+                        model: null,
+                        fallbackOccurred: false,
+                        attempts: [],
+                        usage: null,
+                        products: []
+                    }
+                });
             }
         }
 

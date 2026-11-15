@@ -214,7 +214,7 @@ class ProductContextService {
             return this._filterEligibleProducts(products, budget);
         } catch (error) {
             console.error("ProductContextService.searchProducts error:", error.message);
-            return [];
+            throw error;
         }
     }
 
