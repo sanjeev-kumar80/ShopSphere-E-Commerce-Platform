@@ -173,6 +173,25 @@ const productSchema = new mongoose.Schema(
             index: true
         },
 
+        seller: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Seller",
+            default: null,
+            index: true
+        },
+
+        approvalStatus: {
+            type: String,
+            enum: ["PENDING", "APPROVED", "REJECTED"],
+            default: "APPROVED",
+            index: true
+        },
+
+        rejectionReason: {
+            type: String,
+            default: ""
+        },
+
         seo: {
             title: {
                 type: String,

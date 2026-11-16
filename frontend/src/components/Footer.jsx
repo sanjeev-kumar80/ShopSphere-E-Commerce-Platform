@@ -134,7 +134,13 @@ export default function Footer() {
                 <Link to="/register" className="hover:text-indigo-600 transition">Create Account</Link>
               </li>
               <li>
-                <Link to="/admin/login" className="hover:text-indigo-600 transition">Merchant Portal</Link>
+                <Link to="/seller/register" className="text-indigo-600 font-semibold hover:text-indigo-700 transition">Sell on ShopSphere</Link>
+              </li>
+              <li>
+                <Link to="/seller/login" className="hover:text-indigo-600 transition">Seller Dashboard</Link>
+              </li>
+              <li>
+                <Link to="/admin/login" className="hover:text-indigo-600 transition">Admin Portal</Link>
               </li>
             </ul>
           </div>

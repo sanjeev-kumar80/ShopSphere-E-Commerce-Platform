@@ -5,6 +5,7 @@ import { StoreProvider } from "./context/StoreContext";
 // Layouts
 import CustomerLayout from "./layouts/CustomerLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import SellerLayout from "./layouts/SellerLayout";
 
 // Customer & Public Pages
 import Home from "./pages/Home";
@@ -32,6 +33,21 @@ import CategoryManagement from "./pages/admin/CategoryManagement";
 import ProductManagement from "./pages/admin/ProductManagement";
 import BrandManagement from "./pages/admin/BrandManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
+import SellerApprovals from "./pages/admin/SellerApprovals";
+import ProductApprovals from "./pages/admin/ProductApprovals";
+
+// Seller Pages & Protected Route
+import SellerProtectedRoute from "./components/SellerProtectedRoute";
+import SellerLogin from "./pages/seller/SellerLogin";
+import SellerRegister from "./pages/seller/SellerRegister";
+import SellerDashboard from "./pages/seller/SellerDashboard";
+import SellerProducts from "./pages/seller/SellerProducts";
+import SellerProductForm from "./pages/seller/SellerProductForm";
+import SellerOrders from "./pages/seller/SellerOrders";
+import SellerInventory from "./pages/seller/SellerInventory";
+import SellerAnalytics from "./pages/seller/SellerAnalytics";
+import SellerProfile from "./pages/seller/SellerProfile";
+import SellerSettings from "./pages/seller/SellerSettings";
 
 function NotFound() {
   return (
@@ -98,6 +114,26 @@ function App() {
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
+            {/* Seller Auth Pages */}
+            <Route path="/seller/login" element={<SellerLogin />} />
+            <Route path="/seller/register" element={<SellerRegister />} />
+
+            {/* Seller Protected Workspace */}
+            <Route element={<SellerProtectedRoute />}>
+              <Route path="/seller" element={<SellerLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<SellerDashboard />} />
+                <Route path="products" element={<SellerProducts />} />
+                <Route path="products/new" element={<SellerProductForm />} />
+                <Route path="products/edit/:id" element={<SellerProductForm />} />
+                <Route path="orders" element={<SellerOrders />} />
+                <Route path="inventory" element={<SellerInventory />} />
+                <Route path="analytics" element={<SellerAnalytics />} />
+                <Route path="profile" element={<SellerProfile />} />
+                <Route path="settings" element={<SellerSettings />} />
+              </Route>
+            </Route>
+
             {/* Admin Portal */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminLayout />}>
@@ -107,6 +143,8 @@ function App() {
               <Route path="products" element={<ProductManagement />} />
               <Route path="brands" element={<BrandManagement />} />
               <Route path="orders" element={<OrderManagement />} />
+              <Route path="sellers" element={<SellerApprovals />} />
+              <Route path="product-approvals" element={<ProductApprovals />} />
             </Route>
 
             {/* Catch-all fallback */}

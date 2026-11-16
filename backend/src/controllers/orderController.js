@@ -92,7 +92,9 @@ const createOrder = async (req, res) => {
                 sku: variant.sku,
                 quantity: item.quantity,
                 price: variant.price,
-                subtotal: itemSubtotal
+                subtotal: itemSubtotal,
+                seller: product.seller || null,
+                status: "PLACED"
             });
 
             subtotal += itemSubtotal;

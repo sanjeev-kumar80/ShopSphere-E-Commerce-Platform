@@ -131,7 +131,12 @@ const getProducts = async (req, res) => {
         } = req.query;
 
         const filter = {
-            isActive: true
+            isActive: true,
+            approvalStatus: { $ne: "REJECTED" },
+            $or: [
+                { approvalStatus: "APPROVED" },
+                { approvalStatus: { $exists: false } }
+            ]
         };
 
         // -------------------------

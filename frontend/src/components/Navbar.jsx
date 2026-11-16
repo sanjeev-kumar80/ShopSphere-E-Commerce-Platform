@@ -240,6 +240,16 @@ export default function Navbar() {
                     ❤️ My Wishlist ({wishlistCount})
                   </Link>
 
+                  {user.role === "SELLER" && (
+                    <Link
+                      to="/seller/dashboard"
+                      onClick={() => setAccountDropdownOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg bg-indigo-50/70 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                    >
+                      🏪 Seller Dashboard
+                    </Link>
+                  )}
+
                   {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
                     <Link
                       to="/admin/dashboard"

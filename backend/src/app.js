@@ -17,21 +17,24 @@ const userRoutes = require("./routes/userRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const sellerRoutes = require("./routes/sellerRoutes");
 const aiRoutes = require("./ai/routes/aiRoutes");
-
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
 
-// CORS
+// CORS configuration supporting Vite dev server ports (5173, 5174, etc.)
 app.use(
     cors({
-        origin: [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173"
-        ],
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error("CORS policy violation"), false);
+        },
         credentials: true
     })
 );
@@ -59,8 +62,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/seller", sellerRoutes);
 app.use("/api/ai", aiRoutes);
-
 
 // Health check
 app.get("/api/health", (req, res) => {

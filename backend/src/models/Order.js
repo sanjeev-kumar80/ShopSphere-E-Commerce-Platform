@@ -48,6 +48,26 @@ const orderSchema = new mongoose.Schema(
                     type: Number,
                     required: true,
                     min: 0
+                },
+
+                seller: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Seller",
+                    default: null,
+                    index: true
+                },
+
+                status: {
+                    type: String,
+                    enum: [
+                        "PLACED",
+                        "CONFIRMED",
+                        "PROCESSING",
+                        "SHIPPED",
+                        "DELIVERED",
+                        "CANCELLED"
+                    ],
+                    default: "PLACED"
                 }
             }
         ],
