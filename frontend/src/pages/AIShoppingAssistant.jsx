@@ -65,6 +65,9 @@ export default function AIShoppingAssistant() {
         .map((m) => ({
           role: m.role,
           content: m.content,
+          ...(m.role === "assistant" && Array.isArray(m.products)
+            ? { productIds: m.products.map((product) => product?._id).filter(Boolean) }
+            : {}),
         }));
 
       const res = await aiService.sendMessage(userText, historyPayload);

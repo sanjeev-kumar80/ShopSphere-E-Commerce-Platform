@@ -13,9 +13,16 @@ const categories = [
     { _id: "cat-chargers", name: "Chargers", slug: "chargers", isActive: true }
 ];
 const brands = [{ _id: "brand-acer", name: "Acer" }];
+const PRODUCT_IDS = {
+    laptop: "507f1f77bcf86cd799439011",
+    charger: "507f1f77bcf86cd799439012",
+    bag: "507f1f77bcf86cd799439013",
+    inactive: "507f1f77bcf86cd799439014",
+    unavailable: "507f1f77bcf86cd799439015"
+};
 const products = [
     {
-        _id: "laptop-available",
+        _id: PRODUCT_IDS.laptop,
         name: "ZenBook 14",
         slug: "zenbook-14",
         shortDescription: "Portable laptop for study and programming.",
@@ -34,7 +41,7 @@ const products = [
         ]
     },
     {
-        _id: "charger",
+        _id: PRODUCT_IDS.charger,
         name: "Fast Charging 65W GaN Charger",
         slug: "fast-gan-charger",
         shortDescription: "Compact 65W charger.",
@@ -48,7 +55,7 @@ const products = [
         variants: [{ sku: "CHG-65", price: 2499, stock: 7, isActive: true, attributes: {} }]
     },
     {
-        _id: "laptop-bag",
+        _id: PRODUCT_IDS.bag,
         name: "Everyday Laptop Sleeve Bag",
         slug: "laptop-sleeve-bag",
         shortDescription: "Protective laptop sleeve.",
@@ -62,7 +69,7 @@ const products = [
         variants: [{ sku: "BAG-01", price: 1200, stock: 5, isActive: true, attributes: {} }]
     },
     {
-        _id: "inactive-laptop",
+        _id: PRODUCT_IDS.inactive,
         name: "Inactive Laptop",
         slug: "inactive-laptop",
         shortDescription: "Inactive record.",
@@ -74,7 +81,7 @@ const products = [
         variants: [{ sku: "OFF-1", price: 30000, stock: 5, isActive: true, attributes: {} }]
     },
     {
-        _id: "unavailable-laptop",
+        _id: PRODUCT_IDS.unavailable,
         name: "Unavailable Laptop",
         slug: "unavailable-laptop",
         shortDescription: "No purchasable variants.",
@@ -206,10 +213,12 @@ Module._load = function (request, parent, isMain) {
 
 const productContextService = require(servicePath);
 let aiCalls = 0;
+let lastChatMessages = [];
 const chatGateway = {
-    config: { gateway: { maxOutputTokens: 192 } },
-    async generateChat() {
+    config: { gateway: { maxOutputTokens: 128 } },
+    async generateChat(messages) {
         aiCalls += 1;
+        lastChatMessages = messages;
         return {
             text: "Here is a matching laptop.",
             provider: "ollama",
@@ -273,6 +282,26 @@ async function run() {
     const chargerRecommendations = await productContextService.searchProducts("Recommend a laptop charger", 4);
     assert.deepEqual(chargerRecommendations.map((product) => product.name), ["Fast Charging 65W GaN Charger"]);
 
+    const categoryOnlyLaptop = {
+        _id: "category-only-laptop",
+        name: "Swift 14 Ultrabook",
+        slug: "swift-14-ultrabook",
+        shortDescription: "Portable 14-inch computer.",
+        category: "cat-laptops",
+        brand: "brand-acer",
+        tags: ["ultrabook", "programming"],
+        isActive: true,
+        rating: 4.3,
+        reviewCount: 3,
+        variants: [{ sku: "SWIFT-14", price: 45000, stock: 2, isActive: true, attributes: { memory: "16GB" } }]
+    };
+    products.push(categoryOnlyLaptop);
+    resetQueryCounts();
+    const categoryLaptops = await productContextService.searchProducts("Recommend a laptop", 4);
+    assert.equal(categoryLaptops.some((product) => product._id === categoryOnlyLaptop._id), true);
+    assert.equal(categoryLaptops.some((product) => product._id === PRODUCT_IDS.charger || product._id === PRODUCT_IDS.bag), false);
+    products.pop();
+
     resetQueryCounts();
     const accessories = await productContextService.searchProducts("Show me laptop accessories", 4);
     assert.deepEqual(accessories.map((product) => product.name).sort(), ["Everyday Laptop Sleeve Bag", "Fast Charging 65W GaN Charger"].sort());
@@ -282,7 +311,7 @@ async function run() {
     assert.deepEqual(budgetLaptops.map((product) => product.name), ["ZenBook 14"]);
     assert.deepEqual(budgetLaptops[0].variants.map((variant) => variant.sku), ["ZEN-48"]);
 
-    const savedProducts = products.splice(0, products.length, ...products.filter((product) => product._id !== "laptop-available"));
+    const savedProducts = products.splice(0, products.length, ...products.filter((product) => product._id !== PRODUCT_IDS.laptop));
     resetQueryCounts();
     const noLaptops = await productContextService.searchProducts(laptopQuery, 4);
     assert.deepEqual(noLaptops, []);
@@ -304,7 +333,27 @@ async function run() {
     assert.match(infoLog, /totalApiResponseMs/);
 
     products.splice(0, products.length, ...savedProducts);
-    const unavailableOnly = products.filter((product) => product._id === "unavailable-laptop");
+    const originalInfoForSuccess = console.info;
+    console.info = () => {};
+    const successfulResponse = makeResponse();
+    await chat({ body: { message: laptopQuery } }, successfulResponse);
+    successfulResponse.finish();
+    console.info = originalInfoForSuccess;
+    const responseData = successfulResponse.body.data;
+    assert.equal(successfulResponse.statusCode, 200);
+    assert.equal(typeof responseData.reply, "string");
+    assert.equal(responseData.provider, "ollama");
+    assert.equal(responseData.model, "qwen2.5:3b");
+    assert.equal(typeof responseData.fallbackOccurred, "boolean");
+    assert.equal(Array.isArray(responseData.attempts), true);
+    assert.equal(Array.isArray(responseData.products), true);
+    assert.deepEqual(responseData.products.map((product) => product.name), ["ZenBook 14"]);
+    assert.equal(responseData.products[0].slug, "zenbook-14");
+    assert.equal(responseData.products[0].brand.name, "Acer");
+    assert.equal(responseData.products[0].category.name, "Electronics");
+    assert.equal(responseData.products[0].variants[0].price, 48000);
+
+    const unavailableOnly = products.filter((product) => product._id === PRODUCT_IDS.unavailable);
     products.splice(0, products.length, ...unavailableOnly);
     resetQueryCounts();
     assert.deepEqual(await productContextService.searchProducts("laptop", 4), []);
@@ -313,9 +362,149 @@ async function run() {
     const history = Array.from({ length: 20 }, (_, index) => ({ role: "user", content: `turn-${index}` }));
     const promptTemplates = require("../src/ai/prompts/promptTemplates");
     const messages = promptTemplates.buildShoppingChatMessages("current request", "", history);
-    assert.equal(messages.length, 12);
-    assert.equal(messages[1].content, "turn-10");
+    assert.equal(messages.length, 10);
+    assert.equal(messages[1].content, "turn-12");
     assert.equal(messages.at(-2).content, "turn-19");
+
+    const followUpHistory = [
+        { role: "user", content: "Recommend laptops under ₹50,000." },
+        { role: "assistant", content: `Acer Aspire 5 Laptop costs ₹47,990. Lenovo IdeaPad Slim Laptop costs ₹49,990.${" Additional catalog detail.".repeat(50)}` }
+    ];
+    const followUpMessages = promptTemplates.buildShoppingChatMessages(
+        "What about the second one?",
+        "",
+        followUpHistory
+    );
+    assert.match(followUpMessages[0].content, /history only to resolve follow-up references/i);
+    assert.match(followUpMessages[0].content, /only from \[CATALOG\]/i);
+    assert.match(followUpMessages[2].content, /Lenovo IdeaPad Slim Laptop/);
+    assert.equal(followUpMessages[2].content.length, 900);
+    assert.equal(followUpMessages.at(-1).content, "What about the second one?");
+
+    const recommendationHistory = [
+        { role: "user", content: "Recommend laptops under ₹50,000." },
+        { role: "assistant", content: "Here are three options.", productIds: [PRODUCT_IDS.laptop, PRODUCT_IDS.charger, PRODUCT_IDS.bag] }
+    ];
+    assert.deepEqual(
+        productContextService.resolveFollowUpReferences("What about the second one?", recommendationHistory),
+        { isFollowUp: true, ambiguous: false, productIds: [PRODUCT_IDS.charger] }
+    );
+    assert.deepEqual(
+        productContextService.resolveFollowUpReferences("Compare the first and third ones", recommendationHistory),
+        { isFollowUp: true, ambiguous: false, productIds: [PRODUCT_IDS.laptop, PRODUCT_IDS.bag] }
+    );
+    assert.deepEqual(
+        productContextService.resolveFollowUpReferences("Tell me more about that laptop", [
+            { role: "assistant", content: "One laptop recommendation.", productIds: [PRODUCT_IDS.laptop] }
+        ]),
+        { isFollowUp: true, ambiguous: false, productIds: [PRODUCT_IDS.laptop] }
+    );
+    assert.deepEqual(
+        productContextService.resolveFollowUpReferences("Is that still within my budget?", [
+            { role: "assistant", content: "One laptop recommendation.", productIds: [PRODUCT_IDS.laptop] }
+        ]),
+        { isFollowUp: true, ambiguous: false, productIds: [PRODUCT_IDS.laptop] }
+    );
+    assert.equal(productContextService.resolveFollowUpReferences("Does it have good battery life?", recommendationHistory).ambiguous, true);
+    assert.equal(productContextService.resolveFollowUpReferences("What about the third one?", recommendationHistory.slice(0, 1)).ambiguous, true);
+
+    const constraints = productContextService.getFollowUpConstraints(
+        "Is that still within my budget?",
+        recommendationHistory
+    );
+    assert.equal(constraints.budget, 50000);
+    assert.equal(constraints.intent.kind, "laptop");
+
+    resetQueryCounts();
+    assert.deepEqual(await productContextService.getProductsByIds(["malformed-id"]), []);
+    assert.deepEqual(await productContextService.getProductsByIds(["bad-one", "bad-two"]), []);
+    assert.deepEqual(await productContextService.getProductsByIds([""]), []);
+    assert.equal(productQueryCount, 0, "invalid and empty IDs must not reach Product.find");
+
+    const secondProduct = await productContextService.getProductsByIds(
+        [PRODUCT_IDS.laptop, "malformed-id"],
+        4,
+        constraints
+    );
+    assert.deepEqual(secondProduct.map((product) => product._id), [PRODUCT_IDS.laptop]);
+    assert.deepEqual(secondProduct[0].variants.map((variant) => variant.sku), ["ZEN-48"]);
+    assert.equal(productQueryCount, 1);
+    assert.deepEqual(seenProductFilters.at(-1)._id.$in, [PRODUCT_IDS.laptop]);
+    const duplicateProducts = await productContextService.getProductsByIds(
+        [PRODUCT_IDS.laptop, PRODUCT_IDS.laptop],
+        4,
+        constraints
+    );
+    assert.deepEqual(duplicateProducts.map((product) => product._id), [PRODUCT_IDS.laptop]);
+    assert.deepEqual(await productContextService.getProductsByIds([PRODUCT_IDS.inactive]), []);
+    assert.deepEqual(await productContextService.getProductsByIds([PRODUCT_IDS.unavailable]), []);
+    assert.deepEqual(await productContextService.getProductsByIds([PRODUCT_IDS.charger], 4, constraints), []);
+
+    const followUpResponse = makeResponse();
+    await chat({ body: {
+        message: "What about the first one?",
+        history: [
+            { role: "user", content: "Recommend laptops under ₹50,000." },
+            { role: "assistant", content: "Here is one laptop.", productIds: [PRODUCT_IDS.laptop] }
+        ]
+    } }, followUpResponse);
+    followUpResponse.finish();
+    assert.equal(followUpResponse.statusCode, 200);
+    assert.deepEqual(followUpResponse.body.data.products.map((product) => product._id), [PRODUCT_IDS.laptop]);
+    assert.match(lastChatMessages[0].content, /ZenBook 14/);
+    assert.match(lastChatMessages[0].content, /₹48000/);
+    assert.deepEqual(followUpResponse.body.data.products[0].variants.map((variant) => variant.sku), ["ZEN-48"]);
+
+    const ambiguousCallsBefore = aiCalls;
+    const ambiguousResponse = makeResponse();
+    await chat({ body: {
+        message: "Does it have good battery life?",
+        history: [
+            { role: "assistant", content: "Two options.", productIds: [PRODUCT_IDS.laptop, PRODUCT_IDS.bag] }
+        ]
+    } }, ambiguousResponse);
+    assert.match(ambiguousResponse.body.data.reply, /Which product do you mean/);
+    assert.deepEqual(ambiguousResponse.body.data.products, []);
+    assert.equal(aiCalls, ambiguousCallsBefore);
+
+    const unavailableCallsBefore = aiCalls;
+    const unavailableReferenceResponse = makeResponse();
+    await chat({ body: {
+        message: "Tell me more about that laptop",
+        history: [
+            { role: "user", content: "Recommend a laptop." },
+            { role: "assistant", content: "Here is a laptop.", productIds: [PRODUCT_IDS.unavailable] }
+        ]
+    } }, unavailableReferenceResponse);
+    assert.match(unavailableReferenceResponse.body.data.reply, /couldn't find any active, in-stock laptops/i);
+    assert.deepEqual(unavailableReferenceResponse.body.data.products, []);
+    assert.equal(aiCalls, unavailableCallsBefore);
+
+    const longDescriptionProduct = {
+        name: "Long Description Laptop",
+        brand: { name: "Acer" },
+        category: { name: "Laptops" },
+        shortDescription: "Portable programming laptop. ".repeat(30),
+        rating: 4.5,
+        reviewCount: 99,
+        variants: [{
+            price: 49000,
+            stock: 2,
+            isActive: true,
+            attributes: { memory: "16GB", storage: "512GB", notes: "specification ".repeat(30) }
+        }]
+    };
+    const compactContext = productContextService.formatProductsForContext([longDescriptionProduct]);
+    const summary = compactContext.match(/Summary: (.+)/)?.[1];
+    assert.ok(summary);
+    assert.equal(summary.length <= 240, true);
+    assert.match(compactContext, /memory: 16GB, storage: 512GB/);
+    const options = compactContext.match(/Available Options: ([^\n]+)/)?.[1];
+    assert.ok(options);
+    assert.equal(options.length <= 160, true);
+    assert.match(compactContext, /Price: ₹49000/);
+    assert.match(compactContext, /In Stock \(2 available\)/);
+    assert.match(compactContext, /4.5\/5 \(99 reviews\)/);
 
     await testProviderFallback();
 
@@ -338,7 +527,7 @@ async function run() {
     assert.equal(productQueryCount, 1);
     assert.equal(categoryQueryCount, 1);
 
-    console.log("PASS: laptop-only, no-match, accessory intent, budget, stock/active variants, history compaction, and mocked Ollama-to-Gemini fallback checks.");
+    console.log("PASS: intent/category accuracy, no-match, accessory intent, budget, stock/active variants, compact context, validated follow-up IDs, ordinal/pronoun references, ambiguity, current-catalog revalidation, API response shape, and mocked Ollama-to-Gemini fallback checks.");
     console.log(JSON.stringify({
         stage: "after",
         catalogSearchMs: Number(catalogSearchMs.toFixed(1)),

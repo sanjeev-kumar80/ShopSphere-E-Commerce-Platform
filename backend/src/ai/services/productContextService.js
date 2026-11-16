@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Product = require("../../models/Product");
 const { logSafeDiagnostic } = require("../utils/safeDiagnostics");
 const Category = require("../../models/Category");
@@ -18,6 +19,27 @@ const ACCESSORY_TYPES = [
 ];
 const ACCESSORY_REGEX = /\b(?:chargers?|power\s+adapters?|charging\s+adapters?|adapters?|adaptors?|power\s+bricks?|bags?|backpacks?|sleeves?|cases?|mice|mouse|keyboards?|stands?|risers?|docks?|docking\s+stations?|(?:usb[- ]?c\s+)?hubs?|cooling\s+pads?|laptop\s+coolers?|accessor(?:y|ies))\b/i;
 const PRODUCT_SELECT_FIELDS = "name slug description shortDescription variants rating reviewCount isFeatured category brand tags images";
+const MAX_CONTEXT_SUMMARY_CHARACTERS = 240;
+const MAX_CONTEXT_ATTRIBUTE_CHARACTERS = 160;
+const ORDINAL_REFERENCES = [
+    { pattern: /\b(?:first|1st)\b/i, index: 0 },
+    { pattern: /\b(?:second|2nd)\b/i, index: 1 },
+    { pattern: /\b(?:third|3rd)\b/i, index: 2 }
+];
+const FOLLOW_UP_REFERENCE_REGEX = /\b(?:it|that|this one|that one|that laptop|that product|the product|those|them)\b/i;
+
+const compactContextText = (value, maxCharacters) => {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    if (text.length <= maxCharacters) return text;
+
+    const prefix = text.slice(0, maxCharacters - 1);
+    const boundary = prefix.lastIndexOf(" ");
+    const safePrefix = boundary >= maxCharacters * 0.75
+        ? prefix.slice(0, boundary)
+        : prefix;
+
+    return `${safePrefix.trim()}…`;
+};
 
 /**
  * Product Context Service
@@ -25,6 +47,72 @@ const PRODUCT_SELECT_FIELDS = "name slug description shortDescription variants r
  * in real-time catalog data, stock availability, and accurate variant pricing.
  */
 class ProductContextService {
+    resolveFollowUpReferences(query, history = []) {
+        const ordinalMatches = ORDINAL_REFERENCES
+            .filter(({ pattern }) => pattern.test(query || ""))
+            .map(({ index }) => index);
+        const isFollowUp = ordinalMatches.length > 0 || FOLLOW_UP_REFERENCE_REGEX.test(query || "");
+        if (!isFollowUp) return { isFollowUp: false, ambiguous: false, productIds: [] };
+
+        const lastRecommendation = [...(Array.isArray(history) ? history : [])]
+            .reverse()
+            .find((item) => item?.role === "assistant" && Array.isArray(item.productIds));
+        const productIds = [...new Set((lastRecommendation?.productIds || [])
+            .filter((id) => typeof id === "string" && id.trim()))];
+
+        if (ordinalMatches.length > 0) {
+            const selectedIds = [...new Set(ordinalMatches.map((index) => productIds[index]).filter(Boolean))];
+            return {
+                isFollowUp: true,
+                ambiguous: selectedIds.length !== ordinalMatches.length,
+                productIds: selectedIds
+            };
+        }
+
+        return {
+            isFollowUp: true,
+            ambiguous: productIds.length !== 1,
+            productIds: productIds.length === 1 ? productIds : []
+        };
+    }
+
+    getFollowUpConstraints(query, history = []) {
+        const userMessages = (Array.isArray(history) ? history : [])
+            .filter((item) => item?.role === "user" && typeof item.content === "string")
+            .slice(-8)
+            .reverse();
+        const budget = this.extractBudget(query) ??
+            userMessages.map((item) => this.extractBudget(item.content)).find((value) => value !== null) ?? null;
+        const intent = this.getSpecificProductIntent(query) ||
+            userMessages.map((item) => this.getSpecificProductIntent(item.content)).find(Boolean) || null;
+        return { budget, intent };
+    }
+
+    async getProductsByIds(ids, limit = 4, { budget = null, intent = null } = {}) {
+        if (!Array.isArray(ids) || ids.length === 0) return [];
+
+        const validIds = [...new Set(ids
+            .filter((id) => typeof id === "string" && mongoose.isObjectIdOrHexString(id.trim()))
+            .map((id) => id.trim()))];
+        if (validIds.length === 0) return [];
+
+        const products = await Product.find({
+            ...this._eligibleProductFilter(budget),
+            _id: { $in: validIds }
+        })
+            .populate([
+                { path: "category", select: "name slug" },
+                { path: "brand", select: "name" }
+            ])
+            .select(PRODUCT_SELECT_FIELDS)
+            .lean();
+
+        const eligible = this._filterEligibleProducts(products, budget)
+            .filter((product) => !intent || this._matchesSpecificIntent(product, intent));
+        const productsById = new Map(eligible.map((product) => [String(product._id), product]));
+        return validIds.map((id) => productsById.get(id)).filter(Boolean).slice(0, limit);
+    }
+
     extractBudget(query) {
         if (!query || typeof query !== "string") return null;
 
@@ -381,7 +469,7 @@ class ProductContextService {
                     }
 
                     const totalStock = activeVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
-                    stockStr = totalStock > 0 ? `In Stock (${totalStock} available across variants)` : "Out of Stock";
+                    stockStr = totalStock > 0 ? `In Stock (${totalStock} available)` : "Out of Stock";
 
                     // Collect sample variant attributes (e.g. Size, Color)
                     for (const v of activeVariants) {
@@ -389,7 +477,10 @@ class ProductContextService {
                             const entries = v.attributes instanceof Map
                                 ? Array.from(v.attributes.entries())
                                 : Object.entries(v.attributes);
-                            const attrText = entries.map(([k, val]) => `${k}: ${val}`).join(", ");
+                            const attrText = compactContextText(
+                                entries.map(([k, val]) => `${k}: ${val}`).join(", "),
+                                MAX_CONTEXT_ATTRIBUTE_CHARACTERS
+                            );
                             if (attrText && !attributesList.includes(attrText)) {
                                 attributesList.push(attrText);
                             }
@@ -397,7 +488,10 @@ class ProductContextService {
                     }
                 }
 
-                const summary = p.shortDescription || p.description?.slice(0, 250) || "No description provided.";
+                const summary = compactContextText(
+                    p.shortDescription || p.description || "No description provided.",
+                    MAX_CONTEXT_SUMMARY_CHARACTERS
+                );
                 const attrDisplay = attributesList.length > 0 ? `\n   - Available Options: ${attributesList.slice(0, 3).join("; ")}` : "";
 
                 return `${index + 1}. [${p.name}]

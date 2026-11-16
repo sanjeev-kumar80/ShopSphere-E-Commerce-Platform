@@ -121,17 +121,45 @@ const chat = async (req, res) => {
         let budget = null;
         let specificIntent = null;
         if (includeContext) {
+            const followUp = productContextService.resolveFollowUpReferences(message, history);
             const searchStartedAt = performance.now();
             try {
-                relevantProducts = await productContextService.searchProducts(message, 4);
+                if (followUp.isFollowUp) {
+                    if (followUp.ambiguous) {
+                        timings.catalogSearchMs = 0;
+                        return res.status(200).json({
+                            success: true,
+                            data: {
+                                reply: "Which product do you mean? Please name it or choose one recommendation.",
+                                provider: null,
+                                model: null,
+                                fallbackOccurred: false,
+                                attempts: [],
+                                usage: null,
+                                products: []
+                            }
+                        });
+                    }
+
+                    const constraints = productContextService.getFollowUpConstraints(message, history);
+                    relevantProducts = await productContextService.getProductsByIds(
+                        followUp.productIds,
+                        4,
+                        constraints
+                    );
+                    budget = constraints.budget;
+                    specificIntent = constraints.intent;
+                } else {
+                    relevantProducts = await productContextService.searchProducts(message, 4);
+                    budget = productContextService.extractBudget(message);
+                    specificIntent = productContextService.getSpecificProductIntent(message);
+                }
             } finally {
                 timings.catalogSearchMs = performance.now() - searchStartedAt;
             }
 
             const contextStartedAt = performance.now();
             catalogContext = productContextService.formatProductsForContext(relevantProducts);
-            budget = productContextService.extractBudget(message);
-            specificIntent = productContextService.getSpecificProductIntent(message);
 
             if (relevantProducts.length === 0 && (budget !== null || specificIntent)) {
                 timings.contextPreparationMs = performance.now() - contextStartedAt;
@@ -151,6 +179,22 @@ const chat = async (req, res) => {
                     success: true,
                     data: {
                         reply,
+                        provider: null,
+                        model: null,
+                        fallbackOccurred: false,
+                        attempts: [],
+                        usage: null,
+                        products: []
+                    }
+                });
+            }
+
+            if (followUp.isFollowUp && relevantProducts.length === 0) {
+                timings.contextPreparationMs = performance.now() - contextStartedAt;
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        reply: "I couldn't verify that recommendation as active and in stock under your constraints. Would you like me to find current alternatives?",
                         provider: null,
                         model: null,
                         fallbackOccurred: false,

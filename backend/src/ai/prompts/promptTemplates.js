@@ -1,6 +1,6 @@
 const SYSTEM_PROMPTS = require("./systemPrompts");
-const MAX_HISTORY_MESSAGES_FOR_PROMPT = 10;
-const MAX_HISTORY_CONTENT_CHARACTERS = 1200;
+const MAX_HISTORY_MESSAGES_FOR_PROMPT = 8;
+const MAX_HISTORY_CONTENT_CHARACTERS = 900;
 
 /**
  * Prompt Templates
@@ -18,10 +18,10 @@ const promptTemplates = {
     buildShoppingChatMessages(userMessage, catalogContext = "", history = []) {
         const messages = [];
 
-        // System message with injected catalog grounding
+        // The system prompt names the catalog section and defines its grounding rules.
         let systemContent = SYSTEM_PROMPTS.SHOPPING_ASSISTANT;
         if (catalogContext) {
-            systemContent += `\n\n[RELEVANT CATALOG CONTEXT]:\n${catalogContext}\n\nUse this context to answer customer questions accurately.`;
+            systemContent += `\n\n[CATALOG]\n${catalogContext}`;
         }
 
         messages.push({
@@ -35,7 +35,8 @@ const promptTemplates = {
                 if (h.role && h.content) {
                     messages.push({
                         role: h.role === "assistant" || h.role === "model" ? "assistant" : "user",
-                        content: String(h.content).slice(-MAX_HISTORY_CONTENT_CHARACTERS)
+                        // Preserve the beginning where product names and key facts usually appear.
+                        content: String(h.content).slice(0, MAX_HISTORY_CONTENT_CHARACTERS)
                     });
                 }
             }
