@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -38,17 +37,20 @@ function CustomerLogin() {
 
       const { user, accessToken } = response.data.data;
 
-      if (user.role !== "USER") {
-        setError(
-          "Admin account hai? Please admin login page use karo."
-        );
+      if (user.role === "SELLER") {
+        login(accessToken, user);
+        navigate("/seller/dashboard", { replace: true });
         return;
       }
 
-      // Save customer session
-      login(accessToken, user);
+      if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+        login(accessToken, user);
+        navigate("/admin/dashboard", { replace: true });
+        return;
+      }
 
-      // Redirect to the main ShopSphere homepage
+      // Customer role
+      login(accessToken, user);
       navigate("/", { replace: true });
     } catch (err) {
       setError(
@@ -110,17 +112,17 @@ function CustomerLogin() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <label
                 htmlFor="password"
-                className="block text-sm font-medium"
+                className="text-sm font-medium"
               >
                 Password
               </label>
 
               <Link
                 to="/forgot-password"
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition"
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
               >
                 Forgot password?
               </Link>
@@ -167,12 +169,26 @@ function CustomerLogin() {
           </Link>
         </p>
 
-        <p className="mt-5 text-center text-xs text-gray-400">
-          Admin?{" "}
-          <Link to="/admin/login" className="underline">
-            Admin login
-          </Link>
-        </p>
+        {/* Seller & Admin portal quick-links */}
+        <div className="mt-6 border-t border-gray-100 pt-4 flex items-center justify-center gap-4 text-xs text-gray-400">
+          <span>
+            Seller?{" "}
+            <Link to="/seller/login" className="font-medium text-indigo-600 hover:underline">
+              Seller Login
+            </Link>{" "}
+            •{" "}
+            <Link to="/seller/register" className="font-medium text-indigo-600 hover:underline">
+              Register
+            </Link>
+          </span>
+          <span>|</span>
+          <span>
+            Admin?{" "}
+            <Link to="/admin/login" className="font-medium text-gray-500 hover:text-gray-700 underline">
+              Admin Login
+            </Link>
+          </span>
+        </div>
       </div>
     </main>
   );

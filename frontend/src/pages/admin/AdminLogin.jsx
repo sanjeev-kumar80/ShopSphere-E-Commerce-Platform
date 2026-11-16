@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -41,33 +40,16 @@ export default function AdminLogin() {
 
       login(accessToken, userData);
       navigate("/admin/dashboard", { replace: true });
-      } catch (err) {
-    console.log("Login error:", err);
-    console.log("Server response:", err.response?.data);
-    console.log("Status code:", err.response?.status);
-
-    setError(
-      err.response?.data?.message ||
-      err.message ||
-      "Login failed. Please try again."
-    );
-  } finally {
-    setSubmitting(false);
-  }
-
-  // catch (err) {
-  //     console.log("Login error:", err);
-  //     console.log("Server response:", err.response?.data);
-  //     console.log("Status code:", err.response?.status);
-
-  //     setError(
-  //       err.response?.data?.message ||
-  //       err.message ||
-  //       "Login failed. Please try again."
-  //     );
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
+    } catch (err) {
+      console.log("Login error:", err);
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        "Login failed. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +58,6 @@ export default function AdminLogin() {
         onSubmit={handleSubmit}
         className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-lg"
       >
-        
         <Link
           to="/"
           className="absolute right-8 top-8 text-sm font-medium text-slate-600 hover:text-indigo-600"
@@ -95,17 +76,22 @@ export default function AdminLogin() {
           Sign in to manage your store.
         </p>
 
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         <label className="mt-6 block text-sm font-medium">
           Email address
         </label>
         <input
           type="email"
+          required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="username"
-          className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-          placeholder="admin@example.com"
+          placeholder="admin@shopsphere.com"
+          className="mt-2 w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-indigo-600"
         />
 
         <label className="mt-4 block text-sm font-medium">
@@ -113,27 +99,34 @@ export default function AdminLogin() {
         </label>
         <input
           type="password"
+          required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-          className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-          placeholder="Enter your password"
+          placeholder="••••••••"
+          className="mt-2 w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-indigo-600"
         />
-
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
-            {error}
-          </p>
-        )}
 
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="mt-6 w-full rounded-lg bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
         >
-          {submitting ? "Signing in..." : "Sign in"}
+          {submitting ? "Signing in..." : "Sign In to Admin"}
         </button>
+
+        {/* Quick-links for Seller Portal */}
+        <div className="mt-6 border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
+          <span>
+            Seller?{" "}
+            <Link to="/seller/login" className="font-medium text-indigo-600 hover:underline">
+              Seller Login
+            </Link>{" "}
+            •{" "}
+            <Link to="/seller/register" className="font-medium text-indigo-600 hover:underline">
+              Register Store
+            </Link>
+          </span>
+        </div>
       </form>
     </main>
   );
