@@ -70,14 +70,30 @@ class AIGateway {
         const chain = this.getExecutionChain(options.provider);
         const attempts = [];
         let lastError = null;
+        const totalTimeoutMs = options.totalTimeoutMs || this.config?.gateway?.timeoutMs || 30000;
+        const deadline = Date.now() + totalTimeoutMs;
 
         for (const providerName of chain) {
             const provider = this.getProvider(providerName);
             if (!provider) continue;
 
+            const remainingMs = deadline - Date.now();
+            if (remainingMs <= 0) {
+                lastError = lastError || new Error("AI gateway time budget exhausted");
+                break;
+            }
+
+            const providerTimeoutMs = Math.max(
+                1,
+                Math.min(options.timeoutMs || provider.timeoutMs || remainingMs, remainingMs)
+            );
+
             const start = Date.now();
             try {
-                const result = await provider.generateChat(messages, options);
+                const result = await provider.generateChat(messages, {
+                    ...options,
+                    timeoutMs: providerTimeoutMs
+                });
                 const durationMs = Date.now() - start;
 
                 attempts.push({
