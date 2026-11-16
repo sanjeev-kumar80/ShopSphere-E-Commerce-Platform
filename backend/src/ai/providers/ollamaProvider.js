@@ -9,7 +9,8 @@ class OllamaProvider extends BaseAIProvider {
         super("ollama", config);
         this.baseUrl = (config.baseUrl || "http://localhost:11434").replace(/\/$/, "");
         this.model = config.model || "llama3.2";
-        this.timeoutMs = config.timeoutMs || 12000;
+        this.maxOutputTokens = config.maxOutputTokens || 128;
+        this.timeoutMs = config.timeoutMs || 22000;
         this.temperature = config.temperature ?? 0.7;
     }
 
@@ -73,6 +74,7 @@ class OllamaProvider extends BaseAIProvider {
     async generateChat(messages, options = {}) {
         const model = options.model || this.model;
         const temperature = options.temperature ?? this.temperature;
+        const maxOutputTokens = options.maxOutputTokens || this.maxOutputTokens;
         const timeoutMs = options.timeoutMs || this.timeoutMs;
 
         const { controller, timeoutId } = this.createTimeoutSignal(timeoutMs);
@@ -88,7 +90,8 @@ class OllamaProvider extends BaseAIProvider {
                         content: m.content
                     })),
                     options: {
-                        temperature
+                        temperature,
+                        num_predict: maxOutputTokens
                     },
                     stream: false
                 }),

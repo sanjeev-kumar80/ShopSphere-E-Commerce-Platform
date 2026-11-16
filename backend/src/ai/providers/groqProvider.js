@@ -10,6 +10,7 @@ class GroqProvider extends BaseAIProvider {
         this.apiKey = config.apiKey || "";
         this.baseUrl = (config.baseUrl || "https://api.groq.com/openai/v1").replace(/\/$/, "");
         this.model = config.model || "llama-3.3-70b-versatile";
+        this.maxOutputTokens = config.maxOutputTokens || 128;
         this.timeoutMs = config.timeoutMs || 10000;
         this.temperature = config.temperature ?? 0.7;
     }
@@ -84,6 +85,7 @@ class GroqProvider extends BaseAIProvider {
 
         const model = options.model || this.model;
         const temperature = options.temperature ?? this.temperature;
+        const maxOutputTokens = options.maxOutputTokens || this.maxOutputTokens;
         const timeoutMs = options.timeoutMs || this.timeoutMs;
 
         const { controller, timeoutId } = this.createTimeoutSignal(timeoutMs);
@@ -103,6 +105,7 @@ class GroqProvider extends BaseAIProvider {
                         content: m.content
                     })),
                     temperature,
+                    max_tokens: maxOutputTokens,
                     stream: false
                 }),
                 signal: controller.signal
