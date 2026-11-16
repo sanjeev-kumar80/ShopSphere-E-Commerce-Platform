@@ -74,8 +74,16 @@ export default function AdminLogin() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg"
+        className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-lg"
       >
+        
+        <Link
+          to="/"
+          className="absolute right-8 top-8 text-sm font-medium text-slate-600 hover:text-indigo-600"
+        >
+          ← Back to Store
+        </Link>
+
         <Link to="/" className="text-2xl font-bold text-indigo-600">
           ShopSphere
         </Link>
